@@ -256,8 +256,59 @@ def main(config):
     # Create output directory
     os.makedirs(config['output']['output_dir'], exist_ok=True)
     
+    # Save config to output directory
+    config_save_path = os.path.join(config['output']['output_dir'], 'config.yaml')
+    with  open(config_save_path, 'w') as f:
+        yaml.dump(config, f, default_flow_style=False)
+    print(f"Config saved to {config_save_path}")
     
-
+    # Training loop
+    best_val_loss = float('inf')
+    train_losses = []
+    val_losses = []
+    
+    for epoch in range(1, config['training']['num_epochs'] + 1):
+        train_loss = train_epoch(model, train_loader, criterion, optimizer, device, epoch)
+        val_loss = validate(model, val_loader, criterion, device)
+        
+        # Store losses
+        train_losses.append(train_loss)
+        val_losses.append(val_loss)
+        
+        print(f"Epoch {epoch}/{config['training']['num_epochs']} - Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}")
+        
+        # Step scheduler
+        scheduler.step(val_loss)
+        
+        # Save best model
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
+            torch.save({
+                'epoch': epoch,
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'train_loss': train_loss,
+                'val_loss': val_loss,
+                'config': 'config'
+            }, os.path.join(config['output']['output_dir'], 'best_model.pth'))
+            print(f"Saved best model (val_loss: {val_loss:.4f})")
+            
+        # Save checkpoint every n epochs
+        if epoch % config['output']['save_interval'] == 0:
+            torch.save({
+                'epoch': epoch,
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'train_loss': train_loss,
+                'val_loss': val_loss,
+                'config': 'config'
+            }, os.path.join(config['output']['output_dir'], f'checkpoint_epoch_{epoch}.pth'))
+            
+        # Plot loss curves
+        if epoch % config['output']['plot_interval'] == 0 or epoch == config['training']['epochs']:
+            plot_loss(train_losses, val_losses, config['output']['output_dir'])
+        
+        print("Training completed.")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train Siamese Network")
