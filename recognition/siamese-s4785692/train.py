@@ -1,8 +1,14 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torchvision import transforms
 
 from tqdm import tqdm
+import os
+import matplotlib.pyplot as plt
+import yaml
+import argparse
+import numpy as np
 
 
 class ContrastiveLoss(nn.Module):
@@ -105,6 +111,7 @@ def train_classification_epoch(model, dataloader, criterion, optimizer, device, 
         loss.backward()
         optimizer.step()
         
+        # Calculate accuracy
         probs = torch.sigmoid(logits)
         predictions = (probs >= 0.5).float()
         correct += (predictions == label).sum().item()
@@ -118,3 +125,60 @@ def train_classification_epoch(model, dataloader, criterion, optimizer, device, 
         
         return running_loss / len(dataloader), 100.0 * correct / total
     
+def plot_loss(train_losses, val_losses, output_dir):
+    """
+    Plot and save training and validation loss curves.
+    """
+    plt.figure(figsize=(10, 6))
+    epochs = range(1, len(train_losses) + 1)
+    
+    plt.plot(epochs, train_losses, 'b-', label='Training Loss', linewidth=2)
+    plt.plot(epochs, val_losses, 'r-', label='Validation Loss', linewidth=2)
+    
+    plt.xlabel('Epoch', fontsize=12)
+    plt.ylabel('Loss', fontsize=12)
+    plt.title('Training and Validation Loss', fontsize=14, fontweight='bold')
+    plt.legend(fontsize=11)
+    plt.grid(True, alpha=0.3)
+    
+    # Save plot
+    plot_path = os.path.join(output_dir, 'loss_plot.png')
+    plt.savefig(plot_path, dpi=300, bbox_inches='tight')
+    print(f'Loss plot saved to {plot_path}')
+    plt.close()
+
+def load_config(config_path):
+    """
+    Load YAML configuration file.
+    """
+    with open(config_path, 'r') as file:
+        config = yaml.safe_load(file)
+    return config
+
+def main(config):
+    # Set device
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    
+    # Set random seed for reproducibility
+    torch.manual_seed(config['seed'])
+    np.random.seed(config['seed'])
+    
+    # NOTE: https://github.com/fastai/fastai2/blob/master/nbs/09_vision.augment.ipynb
+    # Rotation may need to be 180 to avoid cutting corners
+    train_transform = transforms.Compose([
+        transforms.Resize((224, 224)),
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomVerticalFlip(),
+        transforms.RandomRotation(config['augmentation']['rotation_degree']),
+        transforms.ToTensor()
+    ])
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Train Siamese Network")
+    parser.add_argument('--config', type=str, required=True, help="Path to config YAML file")
+    
+    args = parser.parse_args()
+    config = load_config(args.config)
+    
+    main(config)
