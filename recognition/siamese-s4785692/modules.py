@@ -34,9 +34,9 @@ class EmbeddingNetwork(nn.Module):
 
     def forward(self, x):
         # Extract features using Vit-B/16 backbone
-        features = self.backbone(x)
+        features = self.backbone(x) # [B, 768]
         # Get embeddings
-        embeddings = self.embedding_head(features)
+        embeddings = self.embedding_head(features) # [B, embedding_dim]
         # L2 normalize the embeddings
         embeddings = F.normalize(embeddings, p=2, dim=1)
         
@@ -46,7 +46,6 @@ class SiameseNetwork(nn.Module):
     """
     Siamese Network for similarlity learning.
     """
-    
     def __init__(self, embedding_dim=256, pretrained=True):
         super(SiameseNetwork, self).__init__()
         
@@ -74,3 +73,66 @@ class SiameseNetwork(nn.Module):
     def get_embedding(self, x):
         """Get embedding for a single input image."""
         return self.embedding_net(x)
+    
+class ClassificationHead(nn.Module):
+    """
+    Classification head for binary classification.
+    """
+    def __init__(self, embedding_dim=256):
+        super(ClassificationHead, self).__init__()
+        
+        self.classifier = nn.Sequential(
+            nn.Linear(embedding_dim, 128, bias=False),
+            nn.BatchNorm1d(128),
+            nn.GELU(),
+            nn.Linear(128, 1)
+        )
+        
+    def forward(self, x):
+        return self.classifier(x).squeeze(1)
+    
+class SiameseClassificationNetwork(nn.Module):
+    """
+    Siamese Network with classification head.
+    """
+    def __init__(self, embedding_dim=256, pretrained=True):
+        super(SiameseClassificationNetwork, self).__init__()
+        
+        self.siamese_net = SiameseNetwork(
+            embedding_dim=embedding_dim,
+            pretrained=pretrained
+        )
+        
+        self.classification_head = ClassificationHead(
+            embedding_dim=embedding_dim
+        )
+        
+    def forward(self, x1, x2=None):
+        """
+        Forward pass through the Siamese Classification Network.
+        Args:
+            x1: First input image.
+            x2: Second input image (optional).
+        """
+        
+        if x2 is not None:
+            # Return embeddings
+            return self.siamese_net(x1, x2)
+        else:
+            # Return classification score during inference
+            embedding = self.siamese_net(x1)
+            logits = self.classification_head(embedding)
+            return logits
+        
+    def get_embedding(self, x):
+        """Get embedding for a single input image."""
+        return self.siamese_net.get_embedding(x)
+    
+    def predict(self, x):
+        """Get classification score with softmax."""
+        logits = self.forward(x)
+        probs = torch.sigmoid(logits)
+        predictions = (probs >= 0.5).float()
+        
+        return predictions, probs
+    
