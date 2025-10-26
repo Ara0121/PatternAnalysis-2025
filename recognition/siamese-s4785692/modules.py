@@ -41,3 +41,36 @@ class EmbeddingNetwork(nn.Module):
         embeddings = F.normalize(embeddings, p=2, dim=1)
         
         return embeddings
+    
+class SiameseNetwork(nn.Module):
+    """
+    Siamese Network for similarlity learning.
+    """
+    
+    def __init__(self, embedding_dim=256, pretrained=True):
+        super(SiameseNetwork, self).__init__()
+        
+        self.embedding_net = EmbeddingNetwork(
+            embedding_dim=embedding_dim,
+            pretrained=pretrained
+        )
+        
+    def forward(self, x1, x2=None):
+        """
+        Foward pass through the Siamese Network,
+        Args:
+            x1: First input image.
+            x2: Second input image (optional).
+        """
+        
+        embedding1 = self.embedding_net(x1)
+        
+        if x2 is not None:
+            embedding2 = self.embedding_net(x2)
+            return embedding1, embedding2
+        
+        return embedding1
+    
+    def get_embedding(self, x):
+        """Get embedding for a single input image."""
+        return self.embedding_net(x)
