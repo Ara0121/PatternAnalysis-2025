@@ -3,6 +3,8 @@ from torch.utils.data import Dataset
 
 import pandas as pd
 import random
+from PIL import Image
+import os
 
 class SiameseISICDataset(Dataset):
     """Custom Dataset for Siamese Network on ISIC dataset."""
@@ -12,8 +14,7 @@ class SiameseISICDataset(Dataset):
         Args:
             image_dir (string): Directory with all the images.
             csv_file (string): Path to the csv file with annotations.
-            transform (callable, optional): Optional transform to be applied
-                on a sample.
+            transform (callable, optional): Optional transform to be applied on a sample.
             train (bool): Indicates if the dataset is for training or testing.
         """
         
@@ -75,3 +76,13 @@ class SiameseISICDataset(Dataset):
         if self.transform:
             anchor_img = self.transform(anchor_img)
             pair_img = self.transform(pair_img)
+            
+        return anchor_img, pair_img, label
+    
+    def _load_image(self, image_name):
+        """Load an image from the disk."""
+        # Try multiple file extensions
+        for ext in ['.jpg', '.png']:
+            image_path = os.path.join(self.image_dir, image_name + ext)
+            if os.path.exists(image_path):
+                return Image.open(image_path).convert('RGB')
