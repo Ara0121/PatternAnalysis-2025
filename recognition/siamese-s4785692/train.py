@@ -248,7 +248,6 @@ def main(config):
             brightness=config['augmentation']['brightness'],
             contrast=config['augmentation']['contrast'],
             saturation=config['augmentation']['saturation'],
-            hue=config['augmentation']['hue']
         ),
         transforms.ToTensor(),
         transforms.Normalize(

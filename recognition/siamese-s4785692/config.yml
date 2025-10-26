@@ -1,0 +1,48 @@
+# Data Configuration
+data:
+  train_image_dir: "./data/train/images"
+  train_csv: "./data/train/metadata.csv"
+  val_image_dir: "./data/val/images"
+  val_csv: "./data/val/metadata.csv"
+
+# Model Configuration
+model:
+  embedding_dim: 256
+  pretrained: true
+  use_classification: false
+
+# Training Configuration
+training:
+  batch_size: 32
+  epochs: 50
+  learning_rate: 0.0001
+  weight_decay: 0.0001
+  margin: 1.0
+  num_workers: 4
+  
+  # Scheduler settings
+  scheduler_factor: 0.5
+  scheduler_patience: 3
+
+# Data Augmentation Configuration
+augmentation:
+  rotation: 10
+  brightness: 0.2
+  contrast: 0.2
+  saturation: 0.2
+  mean: [0.485, 0.456, 0.406]
+  std: [0.229, 0.224, 0.225]
+
+# Output Configuration
+output:
+  output_dir: "./outputs"
+  save_interval: 10
+  plot_interval: 5
+
+# Visualization Configuration
+visualization:
+  visualize_interval: 10  # Visualize latent space every N epochs
+  max_samples: 1000  # Maximum number of samples to visualize
+
+# Random Seed
+seed: 42
