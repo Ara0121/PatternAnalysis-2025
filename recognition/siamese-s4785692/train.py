@@ -1,5 +1,9 @@
 import torch
 import torch.nn as nn
+import torch.optim as optim
+
+from tqdm import tqdm
+
 
 class ContrastiveLoss(nn.Module):
     """
@@ -28,5 +32,52 @@ class ContrastiveLoss(nn.Module):
         loss = torch.mean(loss_pos + loss_neg)
         return loss
     
+def train_epoch(model, dataloader, criterion, optimizer, device, epoch):
+    """
+    Train for one epoch.
+    """
+    model.train()
+    running_loss = 0.0
+    
+    pbar = tqdm(dataloader, desc=f"Epoch {epoch} Training")
+    for batch_idx, (anchor_img, pair_img, label) in enumerate(pbar):
+        anchor_img, pair_img, label = anchor_img.to(device), pair_img.to(device), label.to(device)
+        optimizer.zero_grad()
+        
+        # Forward pass
+        embedding1, embedding2 = model(anchor_img, pair_img)
+        
+        # Loss calculation
+        loss = criterion(embedding1, embedding2, label)
+        
+        # Backward pass
+        loss.bacward()
+        optimizer.step()
+        
+        running_loss += loss.item()
+        pbar.set_postfix({"Loss": running_loss / (batch_idx + 1)})
+    
+    return running_loss / len(dataloader)
 
+def validate(model, dataloader, criterion, device):
+    """
+    Validate the model on the validation set.
+    """
+    model.eval()
+    running_loss = 0.0
+    
+    with torch.no_grad():
+        for anchor_img, pair_img, label in tqdm(dataloader, desc="Validation"):
+            anchor_img, pair_img, label = anchor_img.to(device), pair_img.to(device), label.to(device)
+            
+            # Forward pass
+            embedding1, embedding2 = model(anchor_img, pair_img)
+            
+            # Loss calculation
+            loss = criterion(embedding1, embedding2, label)
+            running_loss += loss.item()
+            
+    return running_loss / len(dataloader)
+
+            
     
