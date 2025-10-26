@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torchvision import transforms
+from torch.utils.data import DataLoader
 
 from tqdm import tqdm
 import os
@@ -10,6 +11,8 @@ import yaml
 import argparse
 import numpy as np
 
+from dataset import SiameseISICDataset
+from modules import SiameseClassificationNetwork
 
 class ContrastiveLoss(nn.Module):
     """
@@ -170,8 +173,90 @@ def main(config):
         transforms.RandomHorizontalFlip(),
         transforms.RandomVerticalFlip(),
         transforms.RandomRotation(config['augmentation']['rotation_degree']),
-        transforms.ToTensor()
+        transforms.ColorJitter(
+            brightness=config['augmentation']['brightness'],
+            contrast=config['augmentation']['contrast'],
+            saturation=config['augmentation']['saturation'],
+            hue=config['augmentation']['hue']
+        ),
+        transforms.ToTensor(),
+        transforms.Normalize(
+            mean=config['augmentation']['mean'],
+            std=config['augmentation']['std']
+        )
     ])
+    
+    val_transform = transforms.Compose([
+        transforms.Resize((224, 224)),
+        transforms.ToTensor(),
+        transforms.Normalize(
+            mean=config['augmentation']['mean'],
+            std=config['augmentation']['std']
+        )
+    ])
+    
+    # Create datasets
+    train_dataset = SiameseISICDataset(
+        image_dir=config['data']['train_image_dir'],
+        csv_file=config['data']['train_csv'],
+        transform=train_transform,
+        train=True
+    )
+    
+    val_dataset = SiameseISICDataset(
+        image_dir=config['data']['val_image_dir'],
+        csv_file=config['data']['val_csv'],
+        transform=val_transform,
+        train=False
+    )
+    
+    # Create dataloaders
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=config['training']['batch_size'],
+        shuffle=True,
+        num_workers=config['training']['num_workers'],
+        pin_memoery=True
+    )
+    
+    val_loader = DataLoader(
+        val_dataset,
+        batch_size=config['training']['batch_size'],
+        shuffle=False,
+        num_workers=config['training']['num_workers'],
+        pin_memory=True
+    )
+    
+    # Create model
+    model = SiameseClassificationNetwork(
+        embedding_dim=config['model']['embedding_dim'],
+        pretrained=config['model']['pretrained']
+    )
+    model = model.to(device)
+    
+    # Define loss function
+    criterion = ContrastiveLoss(margin=config['training']['margin'])
+    
+    # Define optimizer
+    optimizer = optim.Adam(
+        model.parameters(),
+        lr=config['training']['learning_rate'],
+        weight_decay=config['training']['weight_decay']
+    )
+    
+    # Learning rate scheduler
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer,
+        mode='min',
+        factor=config['training']['scheduler_factor'],
+        patience=config['training']['scheduler_patience'],
+        verbose=True
+    )
+    
+    # Create output directory
+    os.makedirs(config['output']['output_dir'], exist_ok=True)
+    
+    
 
 
 if __name__ == "__main__":
