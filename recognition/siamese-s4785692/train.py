@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import yaml
 import argparse
 import numpy as np
+from sklearn.manifold import TSNE
 
 from dataset import SiameseISICDataset
 from modules import SiameseClassificationNetwork
@@ -157,6 +158,76 @@ def load_config(config_path):
     with open(config_path, 'r') as file:
         config = yaml.safe_load(file)
     return config
+
+def extract_embeddings(model, dataloader, device, max_samples=1000):
+    """Extract embeddings from the model for visualization."""
+    model.eval()
+    embedding_list = []
+    label_list = []
+    
+    with torch.no_grad():
+        for anchor_img, _, label in tqdm(dataloader, desc="Extracting Embeddings"):
+            anchor_img = anchor_img.to(device)
+            
+            # Get embeddings
+            embeddings = model.get_embedding(anchor_img)
+            embedding_list.append(embeddings.cpu().numpy())
+            label_list.append(label.numpy())
+            
+            # Limit number of samples
+            if len(embedding_list) * anchor_img.size(0) >= max_samples:
+                break
+    
+    # Concatenate all embeddings and labels
+    embeddings = np.vstack(embedding_list)
+    labels = np.concatenate(label_list)
+    
+    embeddings = embeddings[:max_samples]
+    labels = labels[:max_samples]
+    
+    return embeddings, labels
+
+def visualize_latent_space(embeddings, labels, epoch, output_dir):
+    """"Visualize the latent space using t-SNE"""
+    tsne = TSNE(n_components=2, perplexity=30, n_iter=3000, random_state=42)
+    # Transform embeddings to 2D space
+    embeddings_2d = tsne.fit_transform(embeddings)
+    
+    plt.figure(figsize=(10, 8))
+    
+    unique_labels = np.unique(labels)
+    colors = ['#FF6B6B', '#4ECDC4']
+    markers = ['o', 's']
+    
+    # Plot each class with different colour and marker
+    for i, label in enumerate(unique_labels):
+        mask = labels == label
+        plt.scatter(
+            embeddings_2d[mask, 0],
+            embeddings_2d[mask, 1],
+            c=colors[int(label)],
+            marker=markers[int(label)],
+            label=f'Class {int(label)}',
+            alpha=0.6,
+            s=50,
+            edgecolors='black',
+            linewidth=0.5
+        )
+    
+    plt.xlabel('Dimension 1', fontsize=12)
+    plt.ylabel('Dimension 2', fontsize=12)
+    plt.title(f'Latent Space Visualization (Epoch {epoch})', 
+              fontsize=14, fontweight='bold')
+    plt.legend(fontsize=11, loc='best')
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    
+    # Save plot
+    plot_path = os.path.join(output_dir, f'latent_space_epoch_{epoch}.png')
+    plt.savefig(plot_path, dpi=300, bbox_inches='tight')
+    print(f'✓ Latent space visualization saved to {plot_path}')
+    plt.close()
+
 
 def main(config):
     # Set device
@@ -307,6 +378,11 @@ def main(config):
         # Plot loss curves
         if epoch % config['output']['plot_interval'] == 0 or epoch == config['training']['epochs']:
             plot_loss(train_losses, val_losses, config['output']['output_dir'])
+            
+        # Visualise latent space
+        if epoch % config['visualization']['visualization_interval'] == 0 or epoch == config['training']['epochs']:
+            embeddings, labels = extract_embeddings(model, val_loader, device, max_samples=config['visualization']['max_samples'])
+            visualize_latent_space(embeddings, labels, epoch, config['output']['output_dir'])
         
         print("Training completed.")
 
