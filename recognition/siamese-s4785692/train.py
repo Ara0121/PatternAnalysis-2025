@@ -79,5 +79,42 @@ def validate(model, dataloader, criterion, device):
             
     return running_loss / len(dataloader)
 
-            
+
+def train_classification_epoch(model, dataloader, criterion, optimizer, device, epoch):
+    """
+    Train classification head for one epoch.
+    """
+    model.train()
+    running_loss = 0.0
+    correct = 0
+    total = 0
+    
+    pbar = tqdm(dataloader, desc=f"Epoch {epoch} Training")
+    for batch_idx, (image, label) in enumerate(pbar):
+        image, label = image.to(device), label.to(device)
+        
+        optimizer.zero_grad()
+        
+        # Forward pass
+        logits = model(image)
+        
+        # Loss calculation
+        loss = criterion(logits, label)
+        
+        # Backward pass
+        loss.backward()
+        optimizer.step()
+        
+        probs = torch.sigmoid(logits)
+        predictions = (probs >= 0.5).float()
+        correct += (predictions == label).sum().item()
+        total += label.size(0)
+        
+        running_loss += loss.item()
+        pbar.set_postfix({
+            'loss': running_loss / (batch_idx + 1),
+            'accuracy': 100.0 * correct / total
+        })
+        
+        return running_loss / len(dataloader), 100.0 * correct / total
     
