@@ -1,0 +1,16 @@
+# Source Data Configuration
+source:
+  image_dir: "./data/original/image"
+  csv_file: "./data/original/train-metadata.csv"
+  image_extension: ".jpg"
+
+# Output Configuration
+output:
+  base_dir: "./data/processed"
+
+# Split Configuration
+splits:
+  train_ratio: 0.7
+  val_ratio: 0.15
+  random_seed: 42
+  stratify: true # Stratify by target class to maintain class balance

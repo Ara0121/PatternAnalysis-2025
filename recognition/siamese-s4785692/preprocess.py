@@ -58,7 +58,7 @@ def copy_images(df, src_image_dir, dest_image_dir, image_extension='.jpg'):
     copied_count = 0
     missing_count = 0
     
-    for image_name in tqdm(df['image_name'].values):
+    for image_name in tqdm(df['isic_id'].values):
         src_path = os.path.join(src_image_dir, image_name + image_extension)
         dest_path = os.path.join(dest_image_dir, image_name + image_extension)
         
@@ -97,7 +97,7 @@ def verify_images(df, image_dir, image_extension='.jpg'):
     print(f"Verifying image in {image_dir}")
     
     missing_images = []
-    for image_name in tqdm(df['image_name'].values):
+    for image_name in tqdm(df['isic_id'].values):
         image_path = os.path.join(image_dir, image_name + image_extension)
         if not os.path.exists(image_path):
             missing_images.append(image_name)
