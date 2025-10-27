@@ -26,7 +26,7 @@ class SiameseISICDataset(Dataset):
         self.df = pd.read_csv(csv_file)
         
         self.labels = self.df['target'].astype(int).values
-        self.image_names = self.df['image_name'].astype(str).values
+        self.image_names = self.df['isic_id'].astype(str).values
         
         # Create a dictionary to hold indices for each class
         self.label_to_indices = {0: [], 1: []}

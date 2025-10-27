@@ -1,0 +1,19 @@
+name: siamese-isic
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  # Core
+  - python=3.10
+  - pip
+  - numpy
+  - pandas
+  - pillow
+  - matplotlib
+  - scikit-learn
+  - pytorch
+  - torchvision
+  - torchaudio
+  - cudatoolkit=11.8 
+  - tqdm
+  - pyyaml

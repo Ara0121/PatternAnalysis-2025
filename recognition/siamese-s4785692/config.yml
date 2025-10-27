@@ -1,7 +1,7 @@
 # Data Configuration
 data:
   train_image_dir: "./data/processed/train/images"
-  train_csv: "./data/train/processed/metadata.csv"
+  train_csv: "./data/processed/train/metadata.csv"
   val_image_dir: "./data/processed/val/images"
   val_csv: "./data/processed/val/metadata.csv"
 
