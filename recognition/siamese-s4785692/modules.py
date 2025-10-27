@@ -27,7 +27,7 @@ class EmbeddingNetwork(nn.Module):
         # Embedding head
         self.embedding_head = nn.Sequential(
             nn.Linear(self.feature_dim, 512, bias=False),
-            nn.BatchNorm1d(512),
+            nn.LayerNorm(512), 
             nn.GELU(),
             nn.Linear(512, embedding_dim)
         )

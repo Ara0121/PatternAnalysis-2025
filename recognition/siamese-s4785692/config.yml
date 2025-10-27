@@ -19,6 +19,8 @@ training:
   weight_decay: 0.0001
   margin: 1.0
   num_workers: 4
+  alpha: 1.0
+  beta: 1.0
   
   # Scheduler settings
   scheduler_factor: 0.5
