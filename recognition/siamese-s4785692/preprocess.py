@@ -28,27 +28,44 @@ def split_data(df, train_ratio=0.7, val_ratio=0.15, random_seed=42, stratify=Tru
         random_seed: Seed for reproducibility.
         stratify: Whether to stratify splits based on labels.
     """
+    # Check if ratios are valid
+    if not (0 < train_ratio < 1 and 0 < val_ratio < 1 and train_ratio + val_ratio < 1):
+        raise ValueError("train_ratio and val_ratio must be in (0,1) and sum to < 1.")
     
     # Get stratify column if needed
     stratify_col = df['target'] if stratify and 'target' in df.columns else None
     
-    # First split into train+val and test
-    train_val_df, test_df = train_test_split(
-        df,
-        test_size = 1 - (train_ratio + val_ratio),
-        random_state=random_seed,
-        stratify=stratify_col
-    )
-    
-    # Second split into train and val
-    stratify_col_train_val = train_val_df['target'] if stratify and 'target' in train_val_df.columns else None
-    train_df, val_df = train_test_split(
-        train_val_df,
-        test_size = val_ratio / (train_ratio + val_ratio),
-        random_state=random_seed,
-        stratify=stratify_col_train_val
-    )
-    
+    # Try stratified split, fallback to non-stratified if fails (if class is extremely imbalanced)
+    try:
+        # First split into train+val and test
+        train_val_df, test_df = train_test_split(
+            df,
+            test_size=1 - (train_ratio + val_ratio),
+            random_state=random_seed,
+            stratify=stratify_col
+        )
+        stratify_col_train_val = train_val_df['target'] if stratify and 'target' in train_val_df.columns else None
+        # Second split into train and val
+        train_df, val_df = train_test_split(
+            train_val_df,
+            test_size=val_ratio / (train_ratio + val_ratio),
+            random_state=random_seed,
+            stratify=stratify_col_train_val
+        )
+    except ValueError as e:
+        print(f"\nStratified split failed ({e}). Falling back to non-stratified.")
+        train_val_df, test_df = train_test_split(
+            df,
+            test_size=1 - (train_ratio + val_ratio),
+            random_state=random_seed,
+            stratify=None
+        )
+        train_df, val_df = train_test_split(
+            train_val_df,
+            test_size=val_ratio / (train_ratio + val_ratio),
+            random_state=random_seed,
+            stratify=None
+        )
     return train_df, val_df, test_df
 
 def copy_images(df, src_image_dir, dest_image_dir, image_extension='.jpg'):
@@ -155,9 +172,13 @@ def main(config):
     
     # Verify images
     print("\nVerifying copied images...")
+    all_ok = True
     for split_name, split_df in [('train', train_df), ('val', val_df), ('test', test_df)]:
         image_dir = os.path.join(config['output']['base_dir'], split_name, 'images')
-        verify_images(split_df, image_dir, config['source']['image_extension'])
+        ok = verify_images(split_df, image_dir, config['source']['image_extension'])
+        all_ok = all_ok and ok
+    if not all_ok:
+        raise SystemExit("Verification failed: some images are missing.")
 
     
 if __name__ == "__main__":
