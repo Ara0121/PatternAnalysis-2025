@@ -3,6 +3,8 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 import shutil
+import yaml
+import argparse
 
 def create_directories(base_dir):
     """Create directory structure for train/val/test splits."""
@@ -13,7 +15,7 @@ def create_directories(base_dir):
         image_dir = os.path.join(base_dir, split, 'images')
         os.makedirs(image_dir, exist_ok=True)
         
-    print(f"Directory strructure created under {base_dir}")
+    print(f"\nDirectory strructure created under {base_dir}")
     return splits
 
 def split_data(df, train_ratio=0.7, val_ratio=0.15, random_seed=42, stratify=True):
@@ -67,5 +69,106 @@ def copy_images(df, src_image_dir, dest_image_dir, image_extension='.jpg'):
             missing_count += 1
             print(f"Warning: {src_path} not found.")
         
-    print(f"Copied {copied_count} images. {missing_count} images were missing.")
+    print(f"\nCopied {copied_count} images. {missing_count} images were missing.")
     
+def print_split_stats(train_df, val_df, test_df):
+    """Print statistics of each data split."""
+    def get_stats(df, split_name):
+        total = len(df)
+        pos = df['target'].sum()
+        neg = total - pos
+        pos_ratio = pos / total if total > 0 else 0
+        print(f"{split_name} - Total: {total}, Positive: {pos}, Negative: {neg}, Positive Ratio: {pos_ratio:.4f}")
+    
+    get_stats(train_df, "Train")
+    get_stats(val_df, "Validation")
+    get_stats(test_df, "Test")
+
+def save_metadata(train_df, val_df, test_df, output_dir):
+    """Save metadata CSV files for each data split."""
+    train_df.to_csv(os.path.join(output_dir, 'train', 'metadata.csv'), index=False)
+    val_df.to_csv(os.path.join(output_dir, 'val', 'metadata.csv'), index=False)
+    test_df.to_csv(os.path.join(output_dir, 'test', 'metadata.csv'), index=False)
+    
+    print(f"\nMetadata CSV files saved in {output_dir}")
+    
+def verify_images(df, image_dir, image_extension='.jpg'):
+    """Verify that all images in the DataFrame exist in the specified directory."""
+    print(f"Verifying image in {image_dir}")
+    
+    missing_images = []
+    for image_name in tqdm(df['image_name'].values):
+        image_path = os.path.join(image_dir, image_name + image_extension)
+        if not os.path.exists(image_path):
+            missing_images.append(image_name)
+    
+    if missing_images:
+        print(f"Missing {len(missing_images)} images:")
+        for img in missing_images:
+            print(f"- {img}")
+        return False
+    return True
+
+def main(config):
+    # Load source metadata CSV
+    df = pd.read_csv(config['source']['csv_file'])
+    
+    # Print initial stats
+    if 'target' in df.columns:
+        print("\nInitial dataset statistics:")
+        total = len(df)
+        pos = df['target'].sum()
+        neg = total - pos
+        pos_ratio = pos / total if total > 0 else 0
+        print(f"\nTotal: {total}, Positive: {pos}, Negative: {neg}, Positive Ratio: {pos_ratio:.4f}")
+    
+    # Create directory structure
+    create_directories(config['output']['base_dir'])
+    
+    # Split data
+    print("\nSplitting data...")
+    train_df, val_df, test_df = split_data(
+        df,
+        train_ratio=config['splits']['train_ratio'],
+        val_ratio=config['splits']['val_ratio'],
+        random_seed=config['splits']['random_seed'],
+        stratify=config['splits']['stratify']
+    )
+    
+    # Print split stats
+    print_split_stats(train_df, val_df, test_df)
+    
+    # Split images
+    splits_data = [('train', train_df), ('val', val_df), ('test', test_df)]
+        
+    for split_name, split_df in splits_data:
+        dest_dir = os.path.join(config['output']['base_dir'], split_name, 'images')
+        copy_images(
+            split_df,
+            config['source']['image_dir'],
+            dest_dir,
+            config['source']['image_extension']
+        )
+        
+    # Save metadata CSVs
+    save_metadata(train_df, val_df, test_df, config['output']['base_dir'])
+    
+    # Verify images
+    print("\nVerifying copied images...")
+    for split_name, split_df in [('train', train_df), ('val', val_df), ('test', test_df)]:
+        image_dir = os.path.join(config['output']['base_dir'], split_name, 'images')
+        verify_images(split_df, image_dir, config['source']['image_extension'])
+
+    
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Preprocess ISIC dataset - split into train/val/test')
+    parser.add_argument('--config', type=str, default='preprocessing_config.yaml',
+                        help='Path to YAML configuration file')
+    
+    args = parser.parse_args()
+    
+    # Load configuration
+    with open(args.config, 'r') as f:
+        config = yaml.safe_load(f)
+    
+    main(config)
