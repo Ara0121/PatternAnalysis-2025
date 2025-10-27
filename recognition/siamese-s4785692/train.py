@@ -436,7 +436,7 @@ def main(config):
             plot_loss(train_bce_losses, val_bce_losses, 'bce', config['output']['output_dir'])
             
         # Visualise latent space
-        if epoch % config['visualization']['visualization_interval'] == 0 or epoch == config['training']['epochs']:
+        if epoch % config['visualization']['visualize_interval'] == 0 or epoch == config['training']['epochs']:
             embeddings, labels = extract_embeddings(model, val_loader, device, max_samples=config['visualization']['max_samples'])
             visualize_latent_space(embeddings, labels, epoch, config['output']['output_dir'])
         
