@@ -30,6 +30,7 @@ augmentation:
   brightness: 0.2
   contrast: 0.2
   saturation: 0.2
+  # NOTE: ImageNet base normalization values
   mean: [0.485, 0.456, 0.406]
   std: [0.229, 0.224, 0.225]
 
