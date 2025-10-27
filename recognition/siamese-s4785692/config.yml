@@ -1,9 +1,9 @@
 # Data Configuration
 data:
-  train_image_dir: "./data/train/images"
-  train_csv: "./data/train/metadata.csv"
-  val_image_dir: "./data/val/images"
-  val_csv: "./data/val/metadata.csv"
+  train_image_dir: "./data/processed/train/images"
+  train_csv: "./data/train/processed/metadata.csv"
+  val_image_dir: "./data/processed/val/images"
+  val_csv: "./data/processed/val/metadata.csv"
 
 # Model Configuration
 model:

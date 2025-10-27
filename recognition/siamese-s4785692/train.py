@@ -61,7 +61,7 @@ def train_epoch(model, dataloader, criterion, optimizer, device, epoch):
         loss = criterion(embedding1, embedding2, label)
         
         # Backward pass
-        loss.bacward()
+        loss.backward()
         optimizer.step()
         
         running_loss += loss.item()
@@ -127,7 +127,7 @@ def train_classification_epoch(model, dataloader, criterion, optimizer, device, 
             'accuracy': 100.0 * correct / total
         })
         
-        return running_loss / len(dataloader), 100.0 * correct / total
+    return running_loss / len(dataloader), 100.0 * correct / total
     
 def plot_loss(train_losses, val_losses, output_dir):
     """
@@ -188,7 +188,7 @@ def extract_embeddings(model, dataloader, device, max_samples=1000):
     return embeddings, labels
 
 def visualize_latent_space(embeddings, labels, epoch, output_dir):
-    """"Visualize the latent space using t-SNE"""
+    """Visualize the latent space using t-SNE"""
     tsne = TSNE(n_components=2, perplexity=30, n_iter=3000, random_state=42)
     # Transform embeddings to 2D space
     embeddings_2d = tsne.fit_transform(embeddings)
@@ -286,7 +286,7 @@ def main(config):
         batch_size=config['training']['batch_size'],
         shuffle=True,
         num_workers=config['training']['num_workers'],
-        pin_memoery=True
+        pin_memory=True
     )
     
     val_loader = DataLoader(
@@ -337,7 +337,7 @@ def main(config):
     train_losses = []
     val_losses = []
     
-    for epoch in range(1, config['training']['num_epochs'] + 1):
+    for epoch in range(1, config['training']['epochs'] + 1):
         train_loss = train_epoch(model, train_loader, criterion, optimizer, device, epoch)
         val_loss = validate(model, val_loader, criterion, device)
         
@@ -345,7 +345,7 @@ def main(config):
         train_losses.append(train_loss)
         val_losses.append(val_loss)
         
-        print(f"Epoch {epoch}/{config['training']['num_epochs']} - Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}")
+        print(f"Epoch {epoch}/{config['training']['epochs']} - Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}")
         
         # Step scheduler
         scheduler.step(val_loss)
@@ -359,7 +359,7 @@ def main(config):
                 'optimizer_state_dict': optimizer.state_dict(),
                 'train_loss': train_loss,
                 'val_loss': val_loss,
-                'config': 'config'
+                'config': config
             }, os.path.join(config['output']['output_dir'], 'best_model.pth'))
             print(f"Saved best model (val_loss: {val_loss:.4f})")
             
