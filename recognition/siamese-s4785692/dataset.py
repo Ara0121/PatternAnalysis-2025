@@ -25,8 +25,8 @@ class SiameseISICDataset(Dataset):
         # Read meta data from CSV file
         self.df = pd.read_csv(csv_file)
         
-        self.labels = self.df['target'].values
-        self.image_names = self.df['image_name'].values
+        self.labels = self.df['target'].astype(int).values
+        self.image_names = self.df['image_name'].astype(str).values
         
         # Create a dictionary to hold indices for each class
         self.label_to_indices = {0: [], 1: []}
@@ -49,14 +49,13 @@ class SiameseISICDataset(Dataset):
         
         if get_same_class:
             # Positive pair (same class)
-            
             same_class_indices = self.label_to_indices[anchor_label].copy()
             if index in same_class_indices:
                 same_class_indices.remove(index)
                 
             if len(same_class_indices) > 0:
                 pair_index = random.choice(same_class_indices)
-                label = torch.tensor(1.0, dtype=torch.float32)
+                pair_label = 1.0
             else:
                 # Fallback to negative pair if no other same class image exists
                 diff_label = 1 - anchor_label
@@ -64,7 +63,7 @@ class SiameseISICDataset(Dataset):
                 if not diff_pool:
                     raise ValueError("No negative examples available.")
                 pair_index = random.choice(diff_pool)
-                label = torch.tensor(0.0, dtype=torch.float32)
+                pair_label = 0.0
             
         else:
             # Negative pair (different class)
@@ -73,16 +72,17 @@ class SiameseISICDataset(Dataset):
             if not diff_pool:
                 raise RuntimeError("No negative examples available.")
             pair_index = random.choice(diff_pool)
-            label = torch.tensor(0.0, dtype=torch.float32)
+            pair_label = 0.0
             
         pair_name = self.image_names[pair_index]
         pair_img = self._load_image(pair_name)
         
+        # Apply transformation if any
         if self.transform:
             anchor_img = self.transform(anchor_img)
             pair_img = self.transform(pair_img)
             
-        return anchor_img, pair_img, label
+        return anchor_img, pair_img, torch.tensor(anchor_label, dtype=torch.float32), torch.tensor(pair_label, dtype=torch.float32)
     
     def _load_image(self, image_name):
         """Load an image from the disk."""

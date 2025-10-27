@@ -44,7 +44,7 @@ class EmbeddingNetwork(nn.Module):
     
 class SiameseNetwork(nn.Module):
     """
-    Siamese Network for similarlity learning.
+    Siamese Network for similarity learning.
     """
     def __init__(self, embedding_dim=256, pretrained=True):
         super(SiameseNetwork, self).__init__()
@@ -56,7 +56,7 @@ class SiameseNetwork(nn.Module):
         
     def forward(self, x1, x2=None):
         """
-        Foward pass through the Siamese Network,
+        Forward pass through the Siamese Network,
         Args:
             x1: First input image.
             x2: Second input image (optional).

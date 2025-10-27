@@ -11,6 +11,7 @@ import yaml
 import argparse
 import numpy as np
 from sklearn.manifold import TSNE
+import pandas as pd
 
 from dataset import SiameseISICDataset
 from modules import SiameseClassificationNetwork
@@ -29,7 +30,7 @@ class ContrastiveLoss(nn.Module):
         Compute Contrastive loss.
         Args:
             embedding1: Embedding of the first image. [B, D]
-            embedding2: Embedding of the first image. [B, D]
+            embedding2: Embedding of the second image. [B, D]
             label: 1 if same class, 0 otherwise. [B]
         """
         # Euclidean distance between embeddings
@@ -42,94 +43,131 @@ class ContrastiveLoss(nn.Module):
         loss = torch.mean(loss_pos + loss_neg)
         return loss
     
-def train_epoch(model, dataloader, criterion, optimizer, device, epoch):
+def compute_pos_weight(meta_csv):
+    """Compute positive class weight for imbalanced dataset."""
+    df = pd.read_csv(meta_csv)
+    y = df['target'].astype(int).values
+    n_pos = (y == 1).sum()
+    n_neg = (y == 0).sum()
+    # avoid division by zero
+    return float(n_neg / max(n_pos, 1))
+
+def compute_cls_from_logits(logits, targets, threshold=0.5):
+    probs = torch.sigmoid(logits)
+    preds = (probs >= threshold).float()
+    correct = (preds == (targets >= 0.5).float()).sum().item()
+    total = targets.numel()
+    return correct, total, probs
+
+    
+def train_epoch(model, dataloader, criterion_cont, criterion_bce, optimizer, device, epoch, alpha=1.0, beta=1.0):
     """
-    Train for one epoch.
+    Train for one epoch. 
+    Total loss is calculated by combining contrastive loss and classification loss.
+
+        total_loss = alpha * contrastive_loss + beta * bce_loss
+
     """
     model.train()
-    running_loss = 0.0
+    running_total, running_contrastive, running_bce = 0.0, 0.0, 0.0
+    cls_correct, cls_total = 0, 0
     
     pbar = tqdm(dataloader, desc=f"Epoch {epoch} Training")
-    for batch_idx, (anchor_img, pair_img, label) in enumerate(pbar):
-        anchor_img, pair_img, label = anchor_img.to(device), pair_img.to(device), label.to(device)
+    for batch_idx, (anchor_img, pair_img, anchor_label, pair_label) in enumerate(pbar):
+        anchor_img, pair_img = anchor_img.to(device), pair_img.to(device)
+        anchor_label, pair_label = anchor_label.to(device).view(-1).float(), pair_label.to(device).view(-1).float()
         optimizer.zero_grad()
         
-        # Forward pass
+        # Contrastive loss
         embedding1, embedding2 = model(anchor_img, pair_img)
+        loss_cont = criterion_cont(embedding1, embedding2, pair_label)
         
-        # Loss calculation
-        loss = criterion(embedding1, embedding2, label)
+        # BCE loss
+        logits = model.classification_head(embedding1)
+        loss_bce = criterion_bce(logits, anchor_label)
+        
+        # Total loss
+        total_loss = alpha * loss_cont + beta * loss_bce
         
         # Backward pass
-        loss.backward()
+        total_loss.backward()
         optimizer.step()
         
-        running_loss += loss.item()
-        pbar.set_postfix({"Loss": running_loss / (batch_idx + 1)})
-    
-    return running_loss / len(dataloader)
+        correct, total, _ = compute_cls_from_logits(logits, anchor_label)
+        cls_correct += correct
+        cls_total += total
 
-def validate(model, dataloader, criterion, device):
+        running_total += float(total_loss.item())
+        running_contrastive += float(loss_cont.item())
+        running_bce += float(loss_bce.item())
+
+        step = batch_idx + 1
+        if step % 10 == 0:
+            pbar.set_postfix(
+                total=f"{running_total/step:.4f}",
+                contr=f"{running_contrastive/step:.4f}",
+                bce=f"{running_bce/step:.4f}",
+                cls_acc=f"{100.0*cls_correct/max(cls_total,1):.2f}%"
+            )
+
+
+    avg_total = running_total / max(len(dataloader), 1)
+    avg_contr = running_contrastive / max(len(dataloader), 1)
+    avg_bce   = running_bce / max(len(dataloader), 1)
+    cls_acc   = 100.0 * cls_correct / max(cls_total, 1)
+    return avg_total, avg_contr, avg_bce, cls_acc
+
+def validate(model, dataloader, criterion_cont, criterion_bce, device, alpha, beta):
     """
     Validate the model on the validation set.
     """
     model.eval()
-    running_loss = 0.0
+    running_total = running_contrastive = running_bce = 0.0
+    cls_correct = cls_total = 0
     
+    pbar = tqdm(dataloader, desc="Validation")
     with torch.no_grad():
-        for anchor_img, pair_img, label in tqdm(dataloader, desc="Validation"):
-            anchor_img, pair_img, label = anchor_img.to(device), pair_img.to(device), label.to(device)
+        for batch_idx, (anchor_img, pair_img, anchor_label, pair_label) in enumerate(pbar):
+            anchor_img, pair_img = anchor_img.to(device), pair_img.to(device)
+            anchor_label, pair_label = anchor_label.to(device).view(-1).float(), pair_label.to(device).view(-1).float()
             
-            # Forward pass
+            # Contrastive loss
             embedding1, embedding2 = model(anchor_img, pair_img)
+            loss_cont = criterion_cont(embedding1, embedding2, pair_label)
             
-            # Loss calculation
-            loss = criterion(embedding1, embedding2, label)
-            running_loss += loss.item()
+            # BCE loss
+            logits = model.classification_head(embedding1)
+            loss_bce = criterion_bce(logits, anchor_label)
             
-    return running_loss / len(dataloader)
+            # Total loss
+            total_loss = alpha * loss_cont + beta * loss_bce
+            
+            
+            correct, total, _ = compute_cls_from_logits(logits, anchor_label)
+            cls_correct += correct
+            cls_total += total
 
+            running_total += float(total_loss.item())
+            running_contrastive += float(loss_cont.item())
+            running_bce += float(loss_bce.item())
 
-def train_classification_epoch(model, dataloader, criterion, optimizer, device, epoch):
-    """
-    Train classification head for one epoch.
-    """
-    model.train()
-    running_loss = 0.0
-    correct = 0
-    total = 0
+            step = batch_idx + 1
+            if step % 10 == 0:
+                pbar.set_postfix(
+                    total=f"{running_total/step:.4f}",
+                    contr=f"{running_contrastive/step:.4f}",
+                    bce=f"{running_bce/step:.4f}",
+                    cls_acc=f"{100.0*cls_correct/max(cls_total,1):.2f}%"
+                )
+
+        avg_total = running_total / max(len(dataloader), 1)
+        avg_contr = running_contrastive / max(len(dataloader), 1)
+        avg_bce   = running_bce / max(len(dataloader), 1)
+        cls_acc   = 100.0 * cls_correct / max(cls_total, 1)
+        return avg_total, avg_contr, avg_bce, cls_acc
+
     
-    pbar = tqdm(dataloader, desc=f"Epoch {epoch} Training")
-    for batch_idx, (image, label) in enumerate(pbar):
-        image, label = image.to(device), label.to(device)
-        
-        optimizer.zero_grad()
-        
-        # Forward pass
-        logits = model(image)
-        
-        # Loss calculation
-        loss = criterion(logits, label)
-        
-        # Backward pass
-        loss.backward()
-        optimizer.step()
-        
-        # Calculate accuracy
-        probs = torch.sigmoid(logits)
-        predictions = (probs >= 0.5).float()
-        correct += (predictions == label).sum().item()
-        total += label.size(0)
-        
-        running_loss += loss.item()
-        pbar.set_postfix({
-            'loss': running_loss / (batch_idx + 1),
-            'accuracy': 100.0 * correct / total
-        })
-        
-    return running_loss / len(dataloader), 100.0 * correct / total
-    
-def plot_loss(train_losses, val_losses, output_dir):
+def plot_loss(train_losses, val_losses, loss_type, output_dir):
     """
     Plot and save training and validation loss curves.
     """
@@ -146,7 +184,7 @@ def plot_loss(train_losses, val_losses, output_dir):
     plt.grid(True, alpha=0.3)
     
     # Save plot
-    plot_path = os.path.join(output_dir, 'loss_plot.png')
+    plot_path = os.path.join(output_dir, f'{loss_type}_loss_plot.png')
     plt.savefig(plot_path, dpi=300, bbox_inches='tight')
     print(f'Loss plot saved to {plot_path}')
     plt.close()
@@ -166,13 +204,13 @@ def extract_embeddings(model, dataloader, device, max_samples=1000):
     label_list = []
     
     with torch.no_grad():
-        for anchor_img, _, label in tqdm(dataloader, desc="Extracting Embeddings"):
+        for anchor_img, _, anchor_label, _ in tqdm(dataloader, desc="Extracting Embeddings"):
             anchor_img = anchor_img.to(device)
             
             # Get embeddings
             embeddings = model.get_embedding(anchor_img)
             embedding_list.append(embeddings.cpu().numpy())
-            label_list.append(label.numpy())
+            label_list.append(anchor_label.numpy())
             
             # Limit number of samples
             if len(embedding_list) * anchor_img.size(0) >= max_samples:
@@ -189,7 +227,7 @@ def extract_embeddings(model, dataloader, device, max_samples=1000):
 
 def visualize_latent_space(embeddings, labels, epoch, output_dir):
     """Visualize the latent space using t-SNE"""
-    tsne = TSNE(n_components=2, perplexity=30, n_iter=3000, random_state=42)
+    tsne = TSNE(n_components=2, perplexity=30, n_iter=1000, random_state=42)
     # Transform embeddings to 2D space
     embeddings_2d = tsne.fit_transform(embeddings)
     
@@ -225,7 +263,7 @@ def visualize_latent_space(embeddings, labels, epoch, output_dir):
     # Save plot
     plot_path = os.path.join(output_dir, f'latent_space_epoch_{epoch}.png')
     plt.savefig(plot_path, dpi=300, bbox_inches='tight')
-    print(f'✓ Latent space visualization saved to {plot_path}')
+    print(f'Latent space visualization saved to {plot_path}')
     plt.close()
 
 
@@ -304,11 +342,15 @@ def main(config):
     )
     model = model.to(device)
     
-    # Define loss function
-    criterion = ContrastiveLoss(margin=config['training']['margin'])
+    # Calculate positive weights for imabalnced data
+    pos_weight_value = compute_pos_weight(config['data']['train_csv'])
     
+    # Define loss function
+    criterion_cont = ContrastiveLoss(margin=config['training']['margin'])
+    criterion_bce = nn.BCEWithLogitsLoss(pos_weight=torch.tensor(pos_weight_value, device=device))
+
     # Define optimizer
-    optimizer = optim.Adam(
+    optimizer = optim.AdamW(
         model.parameters(),
         lr=config['training']['learning_rate'],
         weight_decay=config['training']['weight_decay']
@@ -323,6 +365,10 @@ def main(config):
         verbose=True
     )
     
+    # Loss weights
+    alpha = float(config['training'].get('alpha', 1.0))  # contrastive weight
+    beta  = float(config['training'].get('beta',  1.0))  # BCE weight
+    
     # Create output directory
     os.makedirs(config['output']['output_dir'], exist_ok=True)
     
@@ -334,34 +380,43 @@ def main(config):
     
     # Training loop
     best_val_loss = float('inf')
-    train_losses = []
-    val_losses = []
+    train_total_losses = []
+    val_total_losses = []
+    train_cont_losses = []
+    val_cont_losses = []
+    train_bce_losses = []
+    val_bce_losses = []
+    
     
     for epoch in range(1, config['training']['epochs'] + 1):
-        train_loss = train_epoch(model, train_loader, criterion, optimizer, device, epoch)
-        val_loss = validate(model, val_loader, criterion, device)
+        train_total, train_cont, train_bce, train_acc = train_epoch(model, train_loader, criterion_cont, criterion_bce, optimizer, device, epoch, alpha, beta)
+        val_total, val_cont, val_bce, val_acc = validate(model, val_loader, criterion_cont, criterion_bce, device, alpha, beta)
         
         # Store losses
-        train_losses.append(train_loss)
-        val_losses.append(val_loss)
+        train_total_losses.append(train_total)
+        val_total_losses.append(val_total)
+        train_cont_losses.append(train_cont)
+        val_cont_losses.append(val_cont)
+        train_bce_losses.append(train_bce)
+        val_bce_losses.append(val_bce)
         
-        print(f"Epoch {epoch}/{config['training']['epochs']} - Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}")
+        print(f"Epoch {epoch}/{config['training']['epochs']} - Train Loss: {train_total:.4f}, Val Loss: {val_total:.4f}")
         
         # Step scheduler
-        scheduler.step(val_loss)
+        scheduler.step(val_total)
         
         # Save best model
-        if val_loss < best_val_loss:
-            best_val_loss = val_loss
+        if val_total < best_val_loss:
+            best_val_loss = val_total
             torch.save({
                 'epoch': epoch,
                 'model_state_dict': model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
-                'train_loss': train_loss,
-                'val_loss': val_loss,
+                'train_loss': train_total,
+                'val_loss': val_total,
                 'config': config
             }, os.path.join(config['output']['output_dir'], 'best_model.pth'))
-            print(f"Saved best model (val_loss: {val_loss:.4f})")
+            print(f"Saved best model (val_loss: {val_total:.4f})")
             
         # Save checkpoint every n epochs
         if epoch % config['output']['save_interval'] == 0:
@@ -369,21 +424,23 @@ def main(config):
                 'epoch': epoch,
                 'model_state_dict': model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
-                'train_loss': train_loss,
-                'val_loss': val_loss,
-                'config': 'config'
+                'train_loss': train_total,
+                'val_loss': val_total,
+                'config': config
             }, os.path.join(config['output']['output_dir'], f'checkpoint_epoch_{epoch}.pth'))
             
         # Plot loss curves
         if epoch % config['output']['plot_interval'] == 0 or epoch == config['training']['epochs']:
-            plot_loss(train_losses, val_losses, config['output']['output_dir'])
+            plot_loss(train_total_losses, val_total_losses, 'total', config['output']['output_dir'])
+            plot_loss(train_cont_losses, val_cont_losses, 'contrastive', config['output']['output_dir'])
+            plot_loss(train_bce_losses, val_bce_losses, 'bce', config['output']['output_dir'])
             
         # Visualise latent space
         if epoch % config['visualization']['visualization_interval'] == 0 or epoch == config['training']['epochs']:
             embeddings, labels = extract_embeddings(model, val_loader, device, max_samples=config['visualization']['max_samples'])
             visualize_latent_space(embeddings, labels, epoch, config['output']['output_dir'])
         
-        print("Training completed.")
+    print("Training completed.")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train Siamese Network")
