@@ -179,6 +179,8 @@ def main(config):
         all_ok = all_ok and ok
     if not all_ok:
         raise SystemExit("Verification failed: some images are missing.")
+    else:
+        print("\nAll images verified successfully.")
 
     
 if __name__ == "__main__":

@@ -56,19 +56,24 @@ class SiameseISICDataset(Dataset):
                 
             if len(same_class_indices) > 0:
                 pair_index = random.choice(same_class_indices)
+                label = torch.tensor(1.0, dtype=torch.float32)
             else:
                 # Fallback to negative pair if no other same class image exists
-                pair_index = index
-                
-            pair_label = anchor_label
-            label = torch.tensor(1.0, dtype=torch.float32)
+                diff_label = 1 - anchor_label
+                diff_pool = self.label_to_indices.get(diff_label, [])
+                if not diff_pool:
+                    raise ValueError("No negative examples available.")
+                pair_index = random.choice(diff_pool)
+                label = torch.tensor(0.0, dtype=torch.float32)
+            
         else:
             # Negative pair (different class)
             different_label = 1 - anchor_label
-            pair_index = random.choice(self.label_to_indices[different_label])
-            pair_label = different_label
+            diff_pool = self.label_to_indices.get(different_label, [])
+            if not diff_pool:
+                raise RuntimeError("No negative examples available.")
+            pair_index = random.choice(diff_pool)
             label = torch.tensor(0.0, dtype=torch.float32)
-            
             
         pair_name = self.image_names[pair_index]
         pair_img = self._load_image(pair_name)
