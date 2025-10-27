@@ -83,7 +83,7 @@ class ClassificationHead(nn.Module):
         
         self.classifier = nn.Sequential(
             nn.Linear(embedding_dim, 128, bias=False),
-            nn.BatchNorm1d(128),
+            nn.LayerNorm(128),
             nn.GELU(),
             nn.Linear(128, 1)
         )
