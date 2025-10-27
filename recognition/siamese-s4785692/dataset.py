@@ -91,3 +91,4 @@ class SiameseISICDataset(Dataset):
             image_path = os.path.join(self.image_dir, image_name + ext)
             if os.path.exists(image_path):
                 return Image.open(image_path).convert('RGB')
+        raise FileNotFoundError(f"Image {image_name} not found with extensions .jpg or .png")
