@@ -30,10 +30,12 @@ def run_inference(model, dataloader, device):
     """Run prediction on a given dataloader."""
     model.eval()
     all_probs, all_targets = [], []
+    # Loop through test dataset and predict
     for anchor_img, _, anchor_label, _ in dataloader:
         anchor_img = anchor_img.to(device)
         logits = model(anchor_img)
-        probs = torch.sigmoid(logits).cpu().numpy()
+        # Apply sigmoid to obtain probabilities
+        probs = torch.sigmoid(logits).detach().cpu().numpy()
         all_probs.append(probs)
         all_targets.append(anchor_label.numpy().astype(int))
     probs = np.concatenate(all_probs)
@@ -45,6 +47,7 @@ def youden_optimal_threshold(y_true, y_prob):
     # NOTE: https://en.wikipedia.org/wiki/Youden's_J_statistic
     fpr, tpr, thr = roc_curve(y_true, y_prob)
     j = tpr - fpr
+    # 
     j_best_idx = int(np.argmax(j))
     return float(thr[j_best_idx])
 
@@ -104,6 +107,7 @@ def save_confusion_heatmap(cm_counts, out_png, title="Confusion Matrix"):
     """Plot and save heat map with count and percentage."""
     mat = np.array(cm_counts, dtype=int)
     row_sum = mat.sum(axis=1, keepdims=True).clip(min=1)
+    # Calculate the percentage rates as well
     pct = (mat / row_sum) * 100.0
 
     fig, ax = plt.subplots(figsize=(7, 6))
@@ -129,7 +133,8 @@ def main(config):
     # Get necessary parameters for evaluation
     eval_cfg = config.get("testing", {})
     checkpoint_path = eval_cfg.get("checkpoint", "best_model.pth")
-    outdir = eval_cfg.get("output_dir", "eval_out")
+    outdir = os.path.abspath(os.path.expanduser(eval_cfg.get("output_dir", "eval_out")))
+    os.makedirs(outdir, exist_ok=True)
     threshold = float(eval_cfg.get("threshold", 0.5))
 
     
