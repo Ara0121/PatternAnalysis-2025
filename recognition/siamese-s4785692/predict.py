@@ -124,7 +124,7 @@ def save_confusion_heatmap(cm_counts, out_png, title="Confusion Matrix"):
 
 
 def main(config):
-    device = torch.device("cuda" if torch.cuda_is_available() else "cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
     # Get necessary parameters for evaluation
     eval_cfg = config.get("testing", {})
