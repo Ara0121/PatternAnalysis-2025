@@ -3,14 +3,13 @@
 train_test_combined.py
 
 Unified script for the Siamese Classification Network on the ISIC dataset.
-This script supports both training and evaluation modes, depending on the flag.
+This script supports both training and testing modes, depending on the flag.
 
-Evaluation Mode (--test):
+Testing Mode (--test):
     - Loads a trained model checkpoint and evaluates it on a test set.
     - Reports classification metrics and generates evaluation plots.
 
     Main components:
-    - run_inference: Run model predictions and collect probabilities/targets.
     - youden_optimal_threshold: Determine best threshold using Youden’s statistic.
     - compute_metrics: Precision, recall, F1, ROC-AUC, PR-AUC, confusion matrix.
     - save_roc_curve / save_pr_curve: Plot and save ROC and PR curves.
@@ -26,7 +25,6 @@ Training Mode (default):
       to learn image similarity and perform classification.
 
     Main components:
-    - ContrastiveLoss: Custom implementation of contrastive loss.
     - Training & Validation loops with combined losses.
     - Loss visualization (total, contrastive, BCE).
     - Latent space visualization using t-SNE.
@@ -57,29 +55,25 @@ import numpy as np
 from sklearn.metrics import (
     precision_score, recall_score, f1_score, roc_auc_score,
     average_precision_score, confusion_matrix, roc_curve,
-    balanced_accuracy_score, precision_recall_curve
+    balanced_accuracy_score
 )
 import pandas as pd
 import os
 import yaml
-import matplotlib.pyplot as plt
 from tqdm import tqdm
-import yaml
 import argparse
 import numpy as np
-from sklearn.manifold import TSNE
 
 from dataset import SiameseISICDataset
 from modules import SiameseClassificationNetwork
-
-
-def load_config(config_path):
-    """
-    Load YAML configuration file.
-    """
-    with open(config_path, 'r') as file:
-        config = yaml.safe_load(file)
-    return config
+from utils import (
+    load_config,
+    plot_loss,
+    visualize_latent_space,
+    save_roc_curve,
+    save_pr_curve,
+    save_confusion_heatmap,
+)
 
 # -------------------- Training --------------------
 class ContrastiveLoss(nn.Module):
@@ -104,6 +98,7 @@ class ContrastiveLoss(nn.Module):
         
         # Loss calculation
         loss_pos = label * torch.pow(distance, 2)
+        # NOTE: https://ieeexplore.ieee.org/document/1640964/
         loss_neg = (1 -label) * torch.pow(torch.clamp(self.margin - distance, min=0.0), 2)
         
         loss = torch.mean(loss_pos + loss_neg)
@@ -115,11 +110,15 @@ def compute_pos_weight(meta_csv):
     y = df['target'].astype(int).values
     n_pos = (y == 1).sum()
     n_neg = (y == 0).sum()
-    # avoid division by zero
+    # Compte the ratio of positive class (Malignant) with respect to negative class (Benign)
     return float(n_neg / max(n_pos, 1))
 
 def compute_cls_from_logits(logits, targets, threshold=0.5):
+    """Compute the classification from logits."""
+    # Apply sigmoid function to get probability
     probs = torch.sigmoid(logits)
+    
+    # Compare with a given threshold and the ground truth
     preds = (probs >= threshold).float()
     correct = (preds == (targets >= 0.5).float()).sum().item()
     total = targets.numel()
@@ -135,11 +134,13 @@ def train_epoch(model, dataloader, criterion_cont, criterion_bce, optimizer, dev
 
     """
     model.train()
+    # Store losses and classification results
     running_total, running_contrastive, running_bce = 0.0, 0.0, 0.0
     cls_correct, cls_total = 0, 0
     
     pbar = tqdm(dataloader, desc=f"Epoch {epoch} Training")
     for batch_idx, (anchor_img, pair_img, anchor_label, pair_label) in enumerate(pbar):
+        # Move image data to GPU and faltten labels
         anchor_img, pair_img = anchor_img.to(device), pair_img.to(device)
         anchor_label, pair_label = anchor_label.to(device).view(-1).float(), pair_label.to(device).view(-1).float()
         optimizer.zero_grad()
@@ -152,21 +153,24 @@ def train_epoch(model, dataloader, criterion_cont, criterion_bce, optimizer, dev
         logits = model.classification_head(embedding1)
         loss_bce = criterion_bce(logits, anchor_label)
         
-        # Total loss
+        # Total loss, refer to doc string above
         total_loss = alpha * loss_cont + beta * loss_bce
         
         # Backward pass
         total_loss.backward()
         optimizer.step()
         
+        # Compute the classification results from logits
         correct, total, _ = compute_cls_from_logits(logits, anchor_label)
         cls_correct += correct
         cls_total += total
 
+        # Cumulate losses
         running_total += float(total_loss.item())
         running_contrastive += float(loss_cont.item())
         running_bce += float(loss_bce.item())
 
+        # Update progress bar accordingly
         step = batch_idx + 1
         if step % 10 == 0:
             pbar.set_postfix(
@@ -176,7 +180,7 @@ def train_epoch(model, dataloader, criterion_cont, criterion_bce, optimizer, dev
                 cls_acc=f"{100.0*cls_correct/max(cls_total,1):.2f}%"
             )
 
-
+    # Calculate average losses  and classification accuracy
     avg_total = running_total / max(len(dataloader), 1)
     avg_contr = running_contrastive / max(len(dataloader), 1)
     avg_bce   = running_bce / max(len(dataloader), 1)
@@ -188,12 +192,14 @@ def validate(model, dataloader, criterion_cont, criterion_bce, device, alpha, be
     Validate the model on the validation set.
     """
     model.eval()
+    # Store losses and classification results
     running_total = running_contrastive = running_bce = 0.0
     cls_correct = cls_total = 0
     
     pbar = tqdm(dataloader, desc="Validation")
     with torch.no_grad():
         for batch_idx, (anchor_img, pair_img, anchor_label, pair_label) in enumerate(pbar):
+            # Move image data to GPU and flatten labels
             anchor_img, pair_img = anchor_img.to(device), pair_img.to(device)
             anchor_label, pair_label = anchor_label.to(device).view(-1).float(), pair_label.to(device).view(-1).float()
             
@@ -208,15 +214,17 @@ def validate(model, dataloader, criterion_cont, criterion_bce, device, alpha, be
             # Total loss
             total_loss = alpha * loss_cont + beta * loss_bce
             
-            
+            # Compute the classification results from logits
             correct, total, _ = compute_cls_from_logits(logits, anchor_label)
             cls_correct += correct
             cls_total += total
-
+            
+            # Cumulate losses
             running_total += float(total_loss.item())
             running_contrastive += float(loss_cont.item())
             running_bce += float(loss_bce.item())
 
+            # Update progress bar accordingly
             step = batch_idx + 1
             if step % 10 == 0:
                 pbar.set_postfix(
@@ -226,34 +234,12 @@ def validate(model, dataloader, criterion_cont, criterion_bce, device, alpha, be
                     cls_acc=f"{100.0*cls_correct/max(cls_total,1):.2f}%"
                 )
 
+        # Calculate average loss and classification accuracy
         avg_total = running_total / max(len(dataloader), 1)
         avg_contr = running_contrastive / max(len(dataloader), 1)
         avg_bce   = running_bce / max(len(dataloader), 1)
         cls_acc   = 100.0 * cls_correct / max(cls_total, 1)
         return avg_total, avg_contr, avg_bce, cls_acc
-
-    
-def plot_loss(train_losses, val_losses, loss_type, output_dir):
-    """
-    Plot and save training and validation loss curves.
-    """
-    plt.figure(figsize=(10, 6))
-    epochs = range(1, len(train_losses) + 1)
-    
-    plt.plot(epochs, train_losses, 'b-', label='Training Loss', linewidth=2)
-    plt.plot(epochs, val_losses, 'r-', label='Validation Loss', linewidth=2)
-    
-    plt.xlabel('Epoch', fontsize=12)
-    plt.ylabel('Loss', fontsize=12)
-    plt.title('Training and Validation Loss', fontsize=14, fontweight='bold')
-    plt.legend(fontsize=11)
-    plt.grid(True, alpha=0.3)
-    
-    # Save plot
-    plot_path = os.path.join(output_dir, f'{loss_type}_loss_plot.png')
-    plt.savefig(plot_path, dpi=300, bbox_inches='tight')
-    print(f'Loss plot saved to {plot_path}')
-    plt.close()
 
 
 def extract_embeddings(model, dataloader, device, max_samples=1000):
@@ -279,51 +265,11 @@ def extract_embeddings(model, dataloader, device, max_samples=1000):
     embeddings = np.vstack(embedding_list)
     labels = np.concatenate(label_list)
     
+    # Limit a number of samples for computation efficiency
     embeddings = embeddings[:max_samples]
     labels = labels[:max_samples]
     
     return embeddings, labels
-
-def visualize_latent_space(embeddings, labels, epoch, output_dir):
-    """Visualize the latent space using t-SNE"""
-    tsne = TSNE(n_components=2, perplexity=30, max_iter=1000, random_state=42)
-    # Transform embeddings to 2D space
-    embeddings_2d = tsne.fit_transform(embeddings)
-    
-    plt.figure(figsize=(10, 8))
-    
-    unique_labels = np.unique(labels)
-    colors = ['#FF6B6B', '#4ECDC4']
-    markers = ['o', 's']
-    
-    # Plot each class with different colour and marker
-    for i, label in enumerate(unique_labels):
-        mask = labels == label
-        plt.scatter(
-            embeddings_2d[mask, 0],
-            embeddings_2d[mask, 1],
-            c=colors[int(label)],
-            marker=markers[int(label)],
-            label=f'Class {int(label)}',
-            alpha=0.6,
-            s=50,
-            edgecolors='black',
-            linewidth=0.5
-        )
-    
-    plt.xlabel('Dimension 1', fontsize=12)
-    plt.ylabel('Dimension 2', fontsize=12)
-    plt.title(f'Latent Space Visualization (Epoch {epoch})', 
-              fontsize=14, fontweight='bold')
-    plt.legend(fontsize=11, loc='best')
-    plt.grid(True, alpha=0.3)
-    plt.tight_layout()
-    
-    # Save plot
-    plot_path = os.path.join(output_dir, f'latent_space_epoch_{epoch}.png')
-    plt.savefig(plot_path, dpi=300, bbox_inches='tight')
-    print(f'Latent space visualization saved to {plot_path}')
-    plt.close()
 
 
 def train_main(config):
@@ -552,57 +498,6 @@ def compute_metrics(y_true, y_prob, thr=0.5):
         "tp": int(tp), "tn": int(tn), "fp": int(fp), "fn": int(fn),
     }
     return metrics
-
-def save_roc_curve(y_true, y_prob, out_png, title="ROC Curve"):
-    """Plot and save ROC curve."""
-    fpr, tpr, _ = roc_curve(y_true, y_prob)
-    auc = roc_auc_score(y_true, y_prob)
-    plt.figure(figsize=(7, 6))
-    plt.plot(fpr, tpr, lw=2, label=f"AUC = {auc:.3f}")
-    plt.plot([0, 1], [0, 1], "--", lw=1)
-    plt.xlim([0, 1]); plt.ylim([0, 1.05])
-    plt.xlabel("False Positive Rate"); plt.ylabel("True Positive Rate")
-    plt.title(title); plt.legend(loc="lower right")
-    plt.grid(alpha=0.3)
-    plt.savefig(out_png, dpi=300, bbox_inches="tight")
-    plt.close()
-
-
-def save_pr_curve(y_true, y_prob, out_png, title="Precision–Recall Curve"):
-    """Plot and save PR curve."""
-    precisions, recalls, _ = precision_recall_curve(y_true, y_prob)
-    ap = average_precision_score(y_true, y_prob)
-    plt.figure(figsize=(7, 6))
-    plt.plot(recalls, precisions, lw=2, label=f"AP = {ap:.3f}")
-    plt.xlim([0, 1]); plt.ylim([0, 1.05])
-    plt.xlabel("Recall"); plt.ylabel("Precision")
-    plt.title(title); plt.legend(loc="lower left")
-    plt.grid(alpha=0.3)
-    plt.savefig(out_png, dpi=300, bbox_inches="tight")
-    plt.close()
-    
-def save_confusion_heatmap(cm_counts, out_png, title="Confusion Matrix"):
-    """Plot and save heat map with count and percentage."""
-    mat = np.array(cm_counts, dtype=int)
-    row_sum = mat.sum(axis=1, keepdims=True).clip(min=1)
-    # Calculate the percentage rates as well
-    pct = (mat / row_sum) * 100.0
-
-    fig, ax = plt.subplots(figsize=(7, 6))
-    im = ax.imshow(mat, cmap="Blues")
-    ax.figure.colorbar(im, ax=ax)
-    ax.set(xticks=[0, 1], yticks=[0, 1],
-           xticklabels=["Pred 0", "Pred 1"], yticklabels=["True 0", "True 1"],
-           xlabel="Predicted label", ylabel="True label", title=title)
-    for i in range(2):
-        for j in range(2):
-            ax.text(j, i, f"{mat[i, j]:,}\n({pct[i, j]:.1f}%)",
-                    ha="center", va="center",
-                    color="white" if mat[i, j] > mat.max()/2 else "black",
-                    fontsize=12, fontweight="bold")
-    plt.tight_layout()
-    plt.savefig(out_png, dpi=300, bbox_inches="tight")
-    plt.close()
 
 
 def test_main(config):
