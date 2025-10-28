@@ -1,3 +1,17 @@
+# ============================================================
+# environment.yml
+#
+# Conda environment specification for the Siamese-ISIC project.
+# Includes required python version and packages.
+#
+# Usage:
+#   conda env create -f environment.yml
+#   conda activate siamese-isic
+#
+# Author: Sohtaroh Arakawa
+# Created: 2025-10-28
+# ============================================================
+
 name: siamese-isic
 channels:
   - defaults
@@ -14,4 +28,3 @@ dependencies:
       - pyyaml
       - torch
       - torchvision
-      - torchaudio

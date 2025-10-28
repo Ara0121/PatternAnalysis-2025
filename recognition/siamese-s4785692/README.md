@@ -1,6 +1,7 @@
 # Siamese Network | SIIM-ISIC Melanoma Classification
 
-Author: Sohtaroh Arakawa (s4785692)
+**Institution:** The University of Queensland\
+**Created by**: Sohtaroh Arakawa (s4785692)
 
 ## Table of Contents
 - [Overview](#overview)
@@ -10,7 +11,7 @@ Author: Sohtaroh Arakawa (s4785692)
 - [Reference](#reference)
 
 ## 1. Overview
-The objective of this project is to classify medical images of skin lesions into benign or malignant, using a Siamese Network-based classifier. The classifier is trained on ISIC 2020 Kaggle Challenge dataset and aims to achieve 80% accuracy or above on evaludation dataset.
+The objective of this project is to classify medical images of skin lesions into benign or malignant ([ISIC 2020 Kaggle Challenge](https://www.kaggle.com/c/siim-isic-melanoma-classification/overview)), using a Siamese Network-based classifier. The classifier was trained on [ISIC 2020 JPG 224x224 RESIZED](https://www.kaggle.com/datasets/nischaydnk/isic-2020-jpg-224x224-resized/data) which is resized version of original dataset and aims to achieve 80% accuracy or above on evaludation dataset.
 
 ### 1.1 Siamese Network
 A Siamese Network consists of two identical subnetwork which generates embeddings for a pair of inputs. By comparing these encoded features, the netwrok measures their similarity and uses this information to perform classification.
@@ -29,22 +30,24 @@ The dataset used for this project is ISIC 2020 Kaggle Challenge Dataset. For eff
 
 ## Dependences
 This projected was constructed with the following dependences.
-- Python 3.10.19
-- PyTorch 2.9.0
-- TorchVision 0.24.0
-- TorchAudio 2.9.0
-- NumPy 2.2.6
-- pandas 2.3.3
-- Pillow 12.0.0
-- scikit-learn 1.7.2 
-- tqdm 4.67.1
-- PyYAML 6.0.3
+- Python 3.10.19 - Core programming language for all implementations
+- PyTorch 2.9.0 - Deep learning framework for training and evaluation of models
+- TorchVision 0.24.0 - Image loading and transformation
+- NumPy 2.2.6 - Numerical computation and array operation
+- pandas 2.3.3 - CSV loading for ISIC metadata
+- Pillow 12.0.0 - Image loading and preprocessing
+- scikit-learn 1.7.2 - Evaluation metrics calculation and train-test split
+- tqdm 4.67.1 - Progress bar for loop
+- PyYAML 6.0.3 - Reading and writing YAML configure files
 
 ### Installation
 You can create an environment with required dependences by running the following.
 ```
 conda env create -f environment.yml
 ```
+
+### Configuration
+You can customise training or testing by modifying configuration file ```config.yml```. You can also modify ```preprocess_config.yml``` and conduct a new data prepration.
 
 ## Implementation
 
