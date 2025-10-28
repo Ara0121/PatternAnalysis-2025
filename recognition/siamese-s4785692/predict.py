@@ -7,11 +7,12 @@ import numpy as np
 from sklearn.metrics import (
     precision_score, recall_score, f1_score, roc_auc_score,
     average_precision_score, confusion_matrix, roc_curve,
-    balanced_accuracy_score
+    balanced_accuracy_score, precision_recall_curve
 )
 import pandas as pd
 import os
 import yaml
+import matplotlib.pyplot as plt
 
 from dataset import SiameseISICDataset
 from modules import SiameseClassificationNetwork
@@ -26,6 +27,7 @@ def load_config(config_path):
     return config
 
 def run_inference(model, dataloader, device):
+    """Run prediction on a given dataloader."""
     model.eval()
     all_probs, all_targets = [], []
     for anchor_img, _, anchor_label, _ in dataloader:
@@ -39,6 +41,7 @@ def run_inference(model, dataloader, device):
     return probs, targets
 
 def youden_optimal_threshold(y_true, y_prob):
+    """Determine the best logit threshold based on Youden's statistic."""
     # NOTE: https://en.wikipedia.org/wiki/Youden's_J_statistic
     fpr, tpr, thr = roc_curve(y_true, y_prob)
     j = tpr - fpr
@@ -47,12 +50,16 @@ def youden_optimal_threshold(y_true, y_prob):
 
 
 def compute_metrics(y_true, y_prob, thr=0.5):
+    """Compute the evaluation metrics based on a given threhold."""
+    # Create predictions based on threhold
     y_pred = (y_prob >= thr).astype(int)
+    
+    # Compute metrics
     tn, fp, fn, tp = confusion_matrix(y_true, y_pred, labels=[0, 1]).ravel()
-
     rocauc = roc_auc_score(y_true, y_prob) if len(np.unique(y_true)) > 1 else float("nan")
     prauc = average_precision_score(y_true, y_prob) if len(np.unique(y_true)) > 1 else float("nan")
 
+    # Store results as a dictionary
     metrics = {
         "threshold": thr,
         "precision": precision_score(y_true, y_pred, zero_division=0),
@@ -64,6 +71,57 @@ def compute_metrics(y_true, y_prob, thr=0.5):
         "tp": int(tp), "tn": int(tn), "fp": int(fp), "fn": int(fn),
     }
     return metrics
+
+def save_roc_curve(y_true, y_prob, out_png, title="ROC Curve"):
+    """Plot and save ROC curve."""
+    fpr, tpr, _ = roc_curve(y_true, y_prob)
+    auc = roc_auc_score(y_true, y_prob)
+    plt.figure(figsize=(7, 6))
+    plt.plot(fpr, tpr, lw=2, label=f"AUC = {auc:.3f}")
+    plt.plot([0, 1], [0, 1], "--", lw=1)
+    plt.xlim([0, 1]); plt.ylim([0, 1.05])
+    plt.xlabel("False Positive Rate"); plt.ylabel("True Positive Rate")
+    plt.title(title); plt.legend(loc="lower right")
+    plt.grid(alpha=0.3)
+    plt.savefig(out_png, dpi=300, bbox_inches="tight")
+    plt.close()
+
+
+def save_pr_curve(y_true, y_prob, out_png, title="Precision–Recall Curve"):
+    """Plot and save PR curve."""
+    precisions, recalls, _ = precision_recall_curve(y_true, y_prob)
+    ap = average_precision_score(y_true, y_prob)
+    plt.figure(figsize=(7, 6))
+    plt.plot(recalls, precisions, lw=2, label=f"AP = {ap:.3f}")
+    plt.xlim([0, 1]); plt.ylim([0, 1.05])
+    plt.xlabel("Recall"); plt.ylabel("Precision")
+    plt.title(title); plt.legend(loc="lower left")
+    plt.grid(alpha=0.3)
+    plt.savefig(out_png, dpi=300, bbox_inches="tight")
+    plt.close()
+    
+def save_confusion_heatmap(cm_counts, out_png, title="Confusion Matrix"):
+    """Plot and save heat map with count and percentage."""
+    mat = np.array(cm_counts, dtype=int)
+    row_sum = mat.sum(axis=1, keepdims=True).clip(min=1)
+    pct = (mat / row_sum) * 100.0
+
+    fig, ax = plt.subplots(figsize=(7, 6))
+    im = ax.imshow(mat, cmap="Blues")
+    ax.figure.colorbar(im, ax=ax)
+    ax.set(xticks=[0, 1], yticks=[0, 1],
+           xticklabels=["Pred 0", "Pred 1"], yticklabels=["True 0", "True 1"],
+           xlabel="Predicted label", ylabel="True label", title=title)
+    for i in range(2):
+        for j in range(2):
+            ax.text(j, i, f"{mat[i, j]:,}\n({pct[i, j]:.1f}%)",
+                    ha="center", va="center",
+                    color="white" if mat[i, j] > mat.max()/2 else "black",
+                    fontsize=12, fontweight="bold")
+    plt.tight_layout()
+    plt.savefig(out_png, dpi=300, bbox_inches="tight")
+    plt.close()
+
 
 def main(config):
     device = torch.device("cuda" if torch.cuda_is_available() else "cpu")
@@ -123,16 +181,7 @@ def main(config):
     metrics_mannual = compute_metrics(targets, probs, thr=threshold)
     metrics_best = compute_metrics(targets, probs, thr=best_thr)
     
-    df_meta = pd.read_csv(config['data']['test_csv'])
-    ids = df_meta['isic_id'].astype(str).values
-    pd.DataFrame({
-        "isic_id": ids,
-        "target": targets.astype(int),
-        "prob": probs,
-        f"pred@{threshold:.2f}": (probs >= threshold).astype(int),
-        f"pred@best({best_thr:.3f})": (probs >= best_thr).astype(int)
-    }).to_csv(os.path.join(outdir, "predictions.csv"), index=False)
-    
+    # Create a summary of evaluation
     summary = {
         "n_samples": int(len(targets)),
         "pos_rate": float(targets.mean()) if len(targets) else 0.0,
@@ -144,6 +193,23 @@ def main(config):
     }
     pd.DataFrame([summary]).to_csv(os.path.join(outdir, "metrics_summary.csv"), index=False)
     
+    # Plots
+    save_roc_curve(targets, probs, os.path.join(outdir, "roc_curve.png"))
+    save_pr_curve(targets, probs, os.path.join(outdir, "pr_curve.png"))
+
+    # Create confusion matrix
+    cm_mannual = np.array([[metrics_mannual["tn"], metrics_mannual["fp"]], 
+                           [metrics_mannual["fn"], metrics_mannual["tp"]]])
+    cm_best = np.array([[metrics_best["tn"], metrics_best["fp"]], 
+                        [metrics_best["fn"], metrics_best["tp"]]])
+    
+    save_confusion_heatmap(cm_mannual, os.path.join(outdir, f"confusion_matrix_thr_{threshold:.2f}.png"),
+                           title=f"Confusion Matrix (thr={threshold:.2f})")
+    save_confusion_heatmap(cm_best, os.path.join(outdir, f"confusion_matrix_thr_best_{best_thr:.3f}.png"),
+                           title=f"Confusion Matrix (thr={best_thr:.3f})")
+    
+    print(f"\n Finsished testing and evaluation. The results were saved in {outdir}")
+
     
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Test Siamese Network")
