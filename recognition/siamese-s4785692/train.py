@@ -1,3 +1,24 @@
+# -*- coding: utf-8 -*-
+"""
+train.py
+
+Training script for the Siamese Classification Network on the ISIC dataset.
+This script integrates both contrastive loss and binary cross-entropy (BCE) loss
+to learn image similarity and perform classification.
+
+Main components:
+- ContrastiveLoss: Custom implementation of contrastive loss.
+- Training & Validation loops with combined losses.
+- Loss visualization (total, contrastive, BCE).
+- Latent space visualization using t-SNE.
+
+Usage:
+    python train.py --config path/to/config.yaml
+
+Author: Sohtaroh Arakawa
+Created: 2025-10-28
+"""
+
 import torch
 import torch.nn as nn
 import torch.optim as optim

@@ -1,3 +1,14 @@
+# ============================================================
+# preprocess_config.yml
+#
+# Configuration file for ISIC dataset preprocessing, training,
+# and evaluation. Defines dataset paths, split ratios, model
+# parameters, training hyperparameters, and output directories.
+#
+# Author: Sohtaroh Arakawa
+# Created: 2025-10-28
+# ============================================================
+
 # Source Data Configuration
 source:
   image_dir: "./data/original/image"

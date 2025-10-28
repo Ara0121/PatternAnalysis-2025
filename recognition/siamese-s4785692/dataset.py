@@ -1,3 +1,15 @@
+# -*- coding: utf-8 -*-
+"""
+dataset.py
+
+Custom Dataset class for the ISIC dataset, designed for training
+a Siamese Network. This class handles image loading and provides
+random positive/negative pairs for contrastive learning.
+
+Author: Sohtaroh Arakawa
+Created: 2025-10-28
+"""
+
 import torch
 from torch.utils.data import Dataset
 

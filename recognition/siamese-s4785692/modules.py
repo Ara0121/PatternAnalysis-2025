@@ -1,3 +1,19 @@
+# -*- coding: utf-8 -*-
+"""
+modules.py
+
+This file defines the model architectures used for training and inference
+on the ISIC dataset. It includes:
+
+- EmbeddingNetwork: Feature extractor using a pre-trained Vision Transformer (ViT-B/16).
+- SiameseNetwork: Learns similarity between image pairs using embeddings.
+- ClassificationHead: Binary classification head on top of embeddings.
+- SiameseClassificationNetwork: Combines Siamese embeddings with a classification head.
+
+Author: Sohtaroh Arakawa
+Created: 2025-10-28
+"""
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F

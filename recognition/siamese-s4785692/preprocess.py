@@ -1,3 +1,26 @@
+# -*- coding: utf-8 -*-
+"""
+preprocess.py
+
+Preprocessing script for the ISIC dataset. This script splits the dataset into
+train/validation/test sets, copies images into structured directories, saves
+metadata CSV files, and verifies that all images exist.
+
+Main components:
+- create_directories: Set up train/val/test folder structure.
+- split_data: Perform stratified or random splitting of metadata.
+- copy_images: Copy images from source directory to split directories.
+- print_split_stats: Show class distribution in each split.
+- save_metadata: Save metadata CSVs for train/val/test sets.
+- verify_images: Check whether all images are present in the output directories.
+
+Usage:
+    python preprocess.py --config preprocessing_config.yaml
+
+Author: Sohtaroh Arakawa
+Created: 2025-10-28
+"""
+
 import os
 import pandas as pd
 from sklearn.model_selection import train_test_split

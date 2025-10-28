@@ -1,3 +1,30 @@
+# -*- coding: utf-8 -*-
+"""
+predict.py
+
+Evaluation script for the Siamese Classification Network on the ISIC dataset.
+This script loads a trained model checkpoint and evaluates it on a test set,
+reporting classification metrics and generating evaluation plots.
+
+Main components:
+- run_inference: Run model predictions and collect probabilities/targets.
+- youden_optimal_threshold: Determine best threshold using Youden’s statistic.
+- compute_metrics: Precision, recall, F1, ROC-AUC, PR-AUC, confusion matrix.
+- save_roc_curve / save_pr_curve: Plot and save ROC and PR curves.
+- save_confusion_heatmap: Generate confusion matrix heatmaps.
+
+Outputs:
+- Metrics summary CSV
+- ROC and Precision–Recall curves
+- Confusion matrix heatmaps
+
+Usage:
+    python test.py --config path/to/config.yaml
+
+Author: Sohtaroh Arakawa
+Created: 2025-10-28
+"""
+
 import torch
 from torchvision import transforms
 from torch.utils.data import DataLoader

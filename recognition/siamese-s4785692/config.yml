@@ -1,3 +1,15 @@
+# ============================================================
+# config.yaml
+#
+# Configuration file for training, validation, and
+# testing the Siamese Classification Network on the ISIC dataset.
+# Defines dataset paths, model hyperparameters, augmentation
+# strategies, output directories, and evaluation settings.
+#
+# Author: Sohtaroh Arakawa
+# Created: 2025-10-28
+# ============================================================
+
 # Data Configuration
 data:
   train_image_dir: "./data/processed/train/images"

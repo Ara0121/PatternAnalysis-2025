@@ -1,6 +1,13 @@
 # Siamese Network | SIIM-ISIC Melanoma Classification
-Student Name: Sohtaroh Arakawa 
-Student ID: s4785692
+
+Author: Sohtaroh Arakawa (s4785692)
+
+## Table of Contents
+- [Overview](#overview)
+- [Dependences](#dependences)
+- [Implementation](#implementation)
+- [Results](#retults)
+- [Reference](#reference)
 
 ## 1. Overview
 The objective of this project is to classify medical images of skin lesions into benign or malignant, using a Siamese Network-based classifier. The classifier is trained on ISIC 2020 Kaggle Challenge dataset and aims to achieve 80% accuracy or above on evaludation dataset.
@@ -20,9 +27,24 @@ The dataset used for this project is ISIC 2020 Kaggle Challenge Dataset. For eff
 | 1 (Malignant)| 584       |
 
 
+## Dependences
+This projected was constructed with the following dependences.
+- Python 3.10.19
+- PyTorch 2.9.0
+- TorchVision 0.24.0
+- TorchAudio 2.9.0
+- NumPy 2.2.6
+- pandas 2.3.3
+- Pillow 12.0.0
+- scikit-learn 1.7.2 
+- tqdm 4.67.1
+- PyYAML 6.0.3
 
-## 
-
+### Installation
+You can create an environment with required dependences by running the following.
+```
+conda env create -f environment.yml
+```
 
 ## Implementation
 
