@@ -19,7 +19,7 @@ training:
   weight_decay: 0.0001
   margin: 1.0
   num_workers: 4
-  alpha: 1.0
+  alpha: 0.5
   beta: 1.0
   
   # Scheduler settings
@@ -28,10 +28,10 @@ training:
 
 # Data Augmentation Configuration
 augmentation:
-  rotation: 10
+  rotation: 0
   brightness: 0.2
-  contrast: 0.2
-  saturation: 0.2
+  contrast: 0
+  saturation: 0
   # NOTE: ImageNet base normalization values
   mean: [0.485, 0.456, 0.406]
   std: [0.229, 0.224, 0.225]

@@ -227,7 +227,7 @@ def extract_embeddings(model, dataloader, device, max_samples=1000):
 
 def visualize_latent_space(embeddings, labels, epoch, output_dir):
     """Visualize the latent space using t-SNE"""
-    tsne = TSNE(n_components=2, perplexity=30, n_iter=1000, random_state=42)
+    tsne = TSNE(n_components=2, perplexity=30, max_iter=1000, random_state=42)
     # Transform embeddings to 2D space
     embeddings_2d = tsne.fit_transform(embeddings)
     
@@ -281,7 +281,7 @@ def main(config):
         transforms.Resize((224, 224)),
         transforms.RandomHorizontalFlip(),
         transforms.RandomVerticalFlip(),
-        transforms.RandomRotation(config['augmentation']['rotation_degree']),
+        transforms.RandomRotation(config['augmentation']['rotation']),
         transforms.ColorJitter(
             brightness=config['augmentation']['brightness'],
             contrast=config['augmentation']['contrast'],
@@ -362,7 +362,6 @@ def main(config):
         mode='min',
         factor=config['training']['scheduler_factor'],
         patience=config['training']['scheduler_patience'],
-        verbose=True
     )
     
     # Loss weights

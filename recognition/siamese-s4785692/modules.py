@@ -20,6 +20,9 @@ class EmbeddingNetwork(nn.Module):
         # Remove the classification head
         self.backbone.heads = nn.Identity()
         
+        for p in self.backbone.parameters():
+            p.requires_grad = False
+        
         # NOTE: Vit-B/16 has a hidden dimension of 768
         # Ref: https://arxiv.org/abs/2303.08216
         self.feature_dim = vit.hidden_dim
