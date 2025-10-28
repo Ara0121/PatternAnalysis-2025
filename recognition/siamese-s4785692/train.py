@@ -36,9 +36,9 @@ Training Mode (default):
 
 Usage:
     Training:
-        python train_test_combined.py --config path/to/config.yaml
+        python train.py --config path/to/config.yml
     Testing:
-        python train_test_combined.py --config path/to/config.yaml --test
+        python train.py --config path/to/config.yml --test
 
 Author: Sohtaroh Arakawa
 Created: 2025-10-28

@@ -33,18 +33,38 @@ You can create an environment with required dependences by running the following
 conda env create -f environment.yml
 ```
 
-### 2.2 Configuration
-You can customise training or testing by modifying configuration file ```config.yml```. You can also modify ```preprocess_config.yml``` and conduct a new data prepration.
-
 ## 3. Project Structure
 The project consists of the following files.
 - ```preprocess.py```: Preprocess the ISIC dataset by splitting them into train, val, and test sets. Create meta CSV files for each set and verify if it matches with images.
 - ```dataset.py```: Custome dataset that generates image pair for Siamese contrastive learning. 
 - ```modules.py```: Define model architectures, including embedding network (ViT-B/16), Siamese network, classification head, and combined classifier.
 - ```train.py```: Main training loop, integrating contrastive and BCE loss. Also includes visualisation and checkpoint.
-- ```predict.py```: Evaluation of trained model with evaluation metrics and their plots.
+- ```predict.py```: Prediction on a single image. You can customise threold for prediction.
 - `config.yml` – Configuration file for training and evaluation. Defines dataset paths, model hyperparameters, augmentation settings, and output options.  
-- `preprocess.yml` – Configuration file for data preprocessing. Specifies input metadata, image directories, split ratios, and output dataset structure.  
+- `predict_config.yml` – Configuration file for a single classification with pretrained model. Specifies path to image, model, and threhold.  
+- `preprocess_config.yml` – Configuration file for data preprocessing. Specifies input metadata, image directories, split ratios, and output dataset structure.
+
+### 3.1 Running code
+You can customise training, testing, and preprocessing of data by modifying configuration files. 
+
+- ```train.py```
+
+By adding ```--test``` argument, you can conduct evaluation on testing set. Customize training or testing by modifying ```config.yml```.
+```
+python train.py --config path/to/config.yml [option] --test
+```
+- ```predict.py```
+
+Modify ```predict_config.yml``` to specify a path to image that you want to classify. You can also adjust ```threshold``` of classification.
+```
+python predict.py --config path/to/predict_config.yml
+```
+- ```preprocess.py```
+
+Modify ```preprocess_config.yml``` to customise the preprocessing of dataset such as the ratio of train/val/test splits.
+```
+python preprocess.py --config path/to/preprocess_config.yml
+```
 
 ## 4. Model and Data
 ### 4.1 Siamese Network

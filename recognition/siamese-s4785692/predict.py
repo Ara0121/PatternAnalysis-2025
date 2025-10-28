@@ -42,7 +42,7 @@ def predict_one(model, transform, image_path, device) :
 def main(config):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # Define paths and threold from config
+    # Define paths and threshold from config
     img_path = config["predict"].get("image_path", "sample.jpg")
     checkpoint_path = config["predict"].get("checkpoint", "best_model.pth")
     thr = float(config["predict"].get("threshold", 0.5))
