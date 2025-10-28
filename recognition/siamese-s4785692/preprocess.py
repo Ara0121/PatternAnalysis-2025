@@ -15,7 +15,7 @@ Main components:
 - verify_images: Check whether all images are present in the output directories.
 
 Usage:
-    python preprocess.py --config preprocessing_config.yaml
+    python preprocess.py --config preprocess_config.yml
 
 Author: Sohtaroh Arakawa
 Created: 2025-10-28
