@@ -36,6 +36,7 @@ class EmbeddingNetwork(nn.Module):
         # Remove the classification head
         self.backbone.heads = nn.Identity()
         
+        # Freeze backbone for efficient training
         for p in self.backbone.parameters():
             p.requires_grad = False
         
