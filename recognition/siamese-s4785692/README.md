@@ -57,15 +57,19 @@ A Siamese Network consists of two identical subnetwork which generates embedding
 The choice of embedding models varies depending on what the model aims to achieve. Residual Network (ResNet) is one of benchmarks for image classfication. Vision Transformer (ViT) [2] is another embedding model that has shown competitive performance, and it will be used for this project, reflecting the growing relevance of Transofomer-based backbones in computer vision field. Specifically, the project employed pretrained ```vit_b_16``` from PyTorch library [3].
 
 Another choice in the model construction is loss function. The most commonly used loss function in Siamese Network is the contrastive loss. It is originally defined as follow:
+
 $$
 L(W,Y,X_1,X_2)=(1-Y)\frac{1}{2}(D_W)^2+Y\frac{1}{2}\{\text{max}(0, m-D_W)\}^2
 $$
-where $X_1$ and $X_2$ are the wto inputs, $Y=0$ if the pair is similar (same class), $Y=1$ if the pair is dissimilar (different class), and $D_W=|\!|f_W(X_1)-f_W(X_2)|\!|$ is the Euclidean distance between embeddings. $m$ is the margin which is defined as a distance threshold in embedding space that regulates the separation between dissimilar samples [4]. The project employs this exact loss function for training.
+
+where $X_1$ and $X_2$ are the wto inputs, $Y=0$ if the pair is similar (same class), $Y=1$ if the pair is dissimilar (different class), and $D_W=||f_W(X_1)-f_W(X_2)||$ is the Euclidean distance between embeddings. $m$ is the margin which is defined as a distance threshold in embedding space that regulates the separation between dissimilar samples [4]. The project employs this exact loss function for training.
 
 While the Siamese Network often utilised for similar scoring tasks such as face recognition, it can be adapted to classification s by creating an extra layer of classification head. This compont is optimised to effectively identify classes from encodings from ViT. Binary cross-entropy (BCE) was employed as a loss function of this classification head. The obverall loss is degined as a weighted combination:
+
 $$
 L_{total} = \alpha L_{contrastive}+\beta L_{BCE}
-$$ 
+$$
+
 where $\alpha$ and $\beta$ weight the contribution of each term.
 
 
