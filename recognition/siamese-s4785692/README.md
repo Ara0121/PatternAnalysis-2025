@@ -54,7 +54,20 @@ A Siamese Network consists of two identical subnetwork which generates embedding
 ![Siamese Architecture](assets/architecture.png)
 #### *Figure 1: Siamese Network Architecture (created by author)*
 
-The choice of embedding models varies depending on what the model aims to achieve. Residual Network (ResNet) is one of the benchmark when dealing with image classfication. In this project, I selected Vision Transformer (ViT) [2] for experimental purpose, considering its increasing applications. 
+The choice of embedding models varies depending on what the model aims to achieve. Residual Network (ResNet) is one of benchmarks for image classfication. Vision Transformer (ViT) [2] is another embedding model that has shown competitive performance, and it will be used for this project, reflecting the growing relevance of Transofomer-based backbones in computer vision field. Specifically, the project employed pretrained ```vit_b_16``` from PyTorch library [3].
+
+Another choice in the model construction is loss function. The most commonly used loss function in Siamese Network is the contrastive loss. It is originally defined as follow:
+$$
+L(W,Y,X_1,X_2)=(1-Y)\frac{1}{2}(D_W)^2+Y\frac{1}{2}\{\text{max}(0, m-D_W)\}^2
+$$
+where $X_1$ and $X_2$ are the wto inputs, $Y=0$ if the pair is similar (same class), $Y=1$ if the pair is dissimilar (different class), and $D_W=|\!|f_W(X_1)-f_W(X_2)|\!|$ is the Euclidean distance between embeddings. $m$ is the margin which is defined as a distance threshold in embedding space that regulates the separation between dissimilar samples [4]. The project employs this exact loss function for training.
+
+While the Siamese Network often utilised for similar scoring tasks such as face recognition, it can be adapted to classification s by creating an extra layer of classification head. This compont is optimised to effectively identify classes from encodings from ViT. Binary cross-entropy (BCE) was employed as a loss function of this classification head. The obverall loss is degined as a weighted combination:
+$$
+L_{total} = \alpha L_{contrastive}+\beta L_{BCE}
+$$ 
+where $\alpha$ and $\beta$ weight the contribution of each term.
+
 
 ### 4.2 ISIC 2020 Kaggle Challenge Dataset
 The dataset used for this project is ISIC 2020 Kaggle Challenge Dataset. For efficient training, images were resized to 224x224, and it consists of 33126 total images. One of the challnge in this dataset is that the class distribution is significantly imbalanced. Due to the characteristic of medical data, the number of samples for malignant images are extremely limited. To address this issue, few techniques were employed which will be described later.
@@ -79,7 +92,7 @@ The dataset used for this project is ISIC 2020 Kaggle Challenge Dataset. For eff
 ## 7. Reference
 - [1] G. Koch, R. Zemel, R. Salakhutdinov et al., “Siamese neural networks for one-shot image recognition,” inICML deep learning workshop, vol. 2. Lille, 2015, p. 0. https://www.cs.cmu.edu/~rsalakhu/papers/oneshot1.pdf
 - [2] Dosovitskiy, A., Beyer, L., Kolesnikov, A., Weissenborn, D., Zhai, X., Unterthiner, T., Dehghani, M., Minderer, M., Heigold, G., Gelly, S., Uszkoreit, J., & Houlsby, N. (2020). An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale. ArXiv:2010.11929 [Cs]. https://arxiv.org/abs/2010.11929
-
-
+- [3] vit_b_16 — Torchvision main documentation. (2024). Pytorch.org. https://docs.pytorch.org/vision/main/models/generated/torchvision.models.vit_b_16.html
+- [4] Hadsell, R., Chopra, S., & LeCun, Y. (2006, June 1). Dimensionality Reduction by Learning an Invariant Mapping. IEEE Xplore. https://doi.org/10.1109/CVPR.2006.100
 
 
