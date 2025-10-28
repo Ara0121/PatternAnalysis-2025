@@ -4,6 +4,8 @@ data:
   train_csv: "./data/processed/train/metadata.csv"
   val_image_dir: "./data/processed/val/images"
   val_csv: "./data/processed/val/metadata.csv"
+  test_image_dir: "./data/processed/test/images"
+  test_csv: "./data/processed/test/metadata.csv"
 
 # Model Configuration
 model:
@@ -49,3 +51,9 @@ visualization:
 
 # Random Seed
 seed: 42
+
+# Testing
+testing:
+  checkpoint: "./model/best_model.pth"
+  output_dir: "./test_results"
+  threshold: 0.5
