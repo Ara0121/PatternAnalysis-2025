@@ -41,9 +41,9 @@ The project consists of the following files.
 - ```modules.py```: Define model architectures, including embedding network (ViT-B/16), Siamese network, classification head, and combined classifier.
 - ```train.py```: Main training loop, integrating contrastive and BCE loss. Also includes visualisation and checkpoint.
 - ```predict.py```: Prediction on a single image. You can customise threold for prediction.
-- `config.yml`: Configuration file for training and evaluation. Defines dataset paths, model hyperparameters, augmentation settings, and output options.  
-- `predict_config.yml`: Configuration file for a single classification with pretrained model. Specifies path to image, model, and threhold.  
-- `preprocess_config.yml`: Configuration file for data preprocessing. Specifies input metadata, image directories, split ratios, and output dataset structure.
+- `configs/config.yml`: Configuration file for training and evaluation. Defines dataset paths, model hyperparameters, augmentation settings, and output options.  
+- `configs/predict_config.yml`: Configuration file for a single classification with pretrained model. Specifies path to image, model, and threhold.  
+- `configs/preprocess_config.yml`: Configuration file for data preprocessing. Specifies input metadata, image directories, split ratios, and output dataset structure.
 
 ### 3.1 Running code
 You can customise training, testing, and preprocessing of data by modifying configuration files. 
