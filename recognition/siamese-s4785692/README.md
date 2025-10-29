@@ -124,6 +124,8 @@ Evaluation on the trained model were conducted using testing set. Several metric
 ### 6.1 Training
 The loss curve belows shows the total loss during training. We can observe that while the training loss continuously decreases, the validation loss increases and eventually stablises around 3.25 after 30-40 epochs.Contrastive loss and BCE loss were also plotted. While contrastive loss decreases as the training progress, the loss stablises around 0.18. BCE loss plot is significantly similar to total loss plot, indicating less contribution of contrastive loss.
 
+The plots also indicated that the model tends to overfit after 20-30 epochs on training dataset. The training loss stablises after 30-40 epochs and is significanly close to 0, while the gap between training and validation loss (generalisation gap) remains approximately same. Such overfitting highlights the need for improvements in data processing (e.g. stronger augmentation) and model design (e.g. regularisation like dropout) to improve generalisation of model.
+
 <p align="center">
   <img src="assets/total_loss_plot.png" alt="Total loss" width="400"/>
 </p>
@@ -150,7 +152,11 @@ The model was evaluated on the testing set and results in the following performa
 | **ROC AUC**   | 0.8875           |
 | **PR AUC**    | 0.1304           |
 
-The ROC curve shows a moderate trade-off between true positive and false positive rate. Using Youden's J statistic, the optimised threshold was estimated to be 0.496. Confusion matrices show the performance of model with threhold of 0.5 and 0.496. While the optimised threhold implied less true negative (predicted Benign but malignant truly) compared to threhold=0.5. However, it also increased the rate of false positive, which is a clear trade-off. Overall, while the model showed a moderately accuracy and recall, it can be further improved especially its precision. 
+The ROC curve shows a moderate trade-off between true positive and false positive rate. Using Youden's J statistic, the optimised threshold was estimated to be 0.496. Confusion matrices show the performance of model with threhold of 0.5 and 0.496. While the optimised threhold implied less true negative (predicted benign but malignant truly) compared to threhold=0.5. However, it also increased the rate of false positive, which is a clear trade-off. PR curve also highlights this trade-off of recall and precision, where as recall increases, precision also decreases. 
+
+Overall, while the model achieved a moderate accuracy and recall, but precision remained significantly low. This indicates that while the model is useful identifying malignant cases, further improvements are needed to reduce falsely detection of benign as malignant.
+
+
 | ROC curve | PR curve |
 |:----------------:|:--------:|
 | <img src="assets/roc_curve.png" width="400"/> | <img src="assets/pr_curve.png" width="400"/> |
@@ -163,6 +169,7 @@ The ROC curve shows a moderate trade-off between true positive and false positiv
 1. Class imbalance significantly affected the accuracy of classification. In this project, ```pos_weight``` was used to address this problem, but furthermore, techniques such as upsampling using generative models, combining with other datasets, can significantly improve the performance.
 2. While ```vit_b_16``` showed its usefulness as embedding network, the comparative research with other models such as ResNet can further investigate the effectiveness of Transformer-based embedding model in classification problems.
 3. Sequential training should be further investigated. In this project, the training involved both classification and embedding components of architecture, but training these two components separately may produce better results overall.
+4. Generalisation of model. The model tends to overfit to training dataset. Such overfitting can be further improved by techniques such as stronger augmentation, more class balance adjustments, and model regularisation.
 
 ## 8. Reference
 - [1] G. Koch, R. Zemel, R. Salakhutdinov et al., “Siamese neural networks for one-shot image recognition,” inICML deep learning workshop, vol. 2. Lille, 2015, p. 0. https://www.cs.cmu.edu/~rsalakhu/papers/oneshot1.pdf
