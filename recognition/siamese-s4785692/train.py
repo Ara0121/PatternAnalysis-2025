@@ -468,7 +468,7 @@ def run_inference(model, dataloader, device):
 
 def youden_optimal_threshold(y_true, y_prob):
     """Determine the best logit threshold based on Youden's statistic."""
-    # NOTE: https://en.wikipedia.org/wiki/Youden's_J_statistic
+    # NOTE: https://pmc.ncbi.nlm.nih.gov/articles/PMC2515362/
     fpr, tpr, thr = roc_curve(y_true, y_prob)
     j = tpr - fpr
     # 

@@ -74,7 +74,7 @@ A Siamese Network consists of two identical subnetwork which generates embedding
 ![Siamese Architecture](assets/architecture.png)
 #### *Figure 1: Siamese Network Architecture (created by author)*
 
-The choice of embedding models varies depending on what the model aims to achieve. Residual Network (ResNet) is one of benchmarks for image classfication. Vision Transformer (ViT) [2] is another embedding model that has shown competitive performance, and it will be used for this project, reflecting the growing relevance of Transofomer-based backbones in computer vision field. Specifically, the project employed pretrained ```vit_b_16``` from PyTorch library [3].
+The choice of embedding models varies depending on what the model aims to achieve. Residual Network (ResNet) is one of benchmarks for image classfication. **Vision Transformer (ViT)** [2] is another embedding model that has shown competitive performance, and it will be used for this project, reflecting the growing relevance of Transofomer-based backbones in computer vision field. Specifically, the project employed pretrained ```vit_b_16``` from PyTorch library [3].
 
 Another choice in the model construction is loss function. The most commonly used loss function in Siamese Network is the contrastive loss. It is originally defined as follow:
 
@@ -97,7 +97,7 @@ where $\alpha$ and $\beta$ weight the contribution of each term.
 The dataset used for this project is ISIC 2020 Kaggle Challenge Dataset. For efficient training, images were resized to 224x224, and it consists of 33126 total images. One of the challnge in this dataset is that the class distribution is significantly imbalanced. Due to the characteristic of medical data, the number of samples for malignant images are extremely limited. To address this issue, few techniques were employed which will be described later.
 
 | Label        |  Samples  |
-|:-------------|:---------:|
+|:-------------:|:---------:|
 | 0 (Benign)   | 32542     |
 | 1 (Malignant)| 584       |
 
@@ -106,15 +106,24 @@ The dataset used for this project is ISIC 2020 Kaggle Challenge Dataset. For eff
 
 ### 5.1 Training
 Some of the key points from training process are listed below:
-1. Dataset was split into training, validation, and testing set with a ratio of **0.7:0.15:0.15** respectively.
-2. To address imbalance of classes, where ```1 (Malignant)``` has a significantly small number of samples relative to ```0 (Bengn)```, ```pos_weight```[5] was applied for BCE loss calculation. This weighting increase the penalty for missclassifying malignant images, thereby balancing thr contributions of two classes during training.
-3. For generalisation of model, augmentations of images were applied including ```RandomHorizontalFlip```, ```RandomVerticalFlip```, ```ColorJitter```
+1. Dataset was split into training, validation, and testing set with a ratio of **0.7:0.15:0.15** respectively. To ensure each dataset contains the equal proportion of  ```1 (Malignant)``` class, a stratified split was applied.
+2. To address imbalance of classes, where ```1 (Malignant)``` has a significantly small number of samples relative to ```0 (Bengn)```, ```pos_weight```[5] was applied for BCE loss calculation. This weighting increase the penalty for missclassifying malignant images, thereby balancing the contributions of two classes during training.
+3. For generalisation of model, augmentations of images were applied including ```RandomHorizontalFlip```, ```RandomVerticalFlip```, ```ColorJitter```, and ```Normalize```.
+4. The proportions $\alpha$ and $\beta$ in the loss function were adjusted to $\alpha=0.5$ and $\beta=1.0$ to experimentally weights classification loss more.
+5. For visualisation purpose, t-distributed Stochastic Neighbor Embedding (t-SNE) were plotted multiple times during training. This enables to observe the transition of embedding space as the training progresses.
 
 ### 5.2 Prediction
-- evaluation metrics (process and explain what it determines)
+Evaluation on the trained model were conducted using testing set. Several metrics were used to assess the performance of the model:
+1. Basic Precision, Recall, and F1 scores. In the context of medical image classification, **Recall** is particulaly important, as the model should minimise false negatives.
+2. To select optimised threshold, **Youden's J statistic** [6] was employed, which determines the point on ROC curve that maximise the trade off between sensitivity and specificity. This ensures the balance between correctly identifying malignant, while limiting false positives.
+3. Confusion matrix with counts and percentage were plotted to visualise the performance.
+ 
 
 ## 6. Results
-- evaluation metrics
+![Total loss](assets/total_loss_plot.png)
+| Contrastive loss |  BCE loss  |
+|:-------------:|:---------:|
+|![Contrastive loss](assets/contrastive_loss_plot.png)|![BCE loss](assets/bce_loss_plot.png)|
 
 ## 7. Reference
 - [1] G. Koch, R. Zemel, R. Salakhutdinov et al., “Siamese neural networks for one-shot image recognition,” inICML deep learning workshop, vol. 2. Lille, 2015, p. 0. https://www.cs.cmu.edu/~rsalakhu/papers/oneshot1.pdf
@@ -122,4 +131,4 @@ Some of the key points from training process are listed below:
 - [3] vit_b_16 — Torchvision main documentation. (2024). Pytorch.org. https://docs.pytorch.org/vision/main/models/generated/torchvision.models.vit_b_16.html
 - [4] Hadsell, R., Chopra, S., & LeCun, Y. (2006, June 1). Dimensionality Reduction by Learning an Invariant Mapping. IEEE Xplore. https://doi.org/10.1109/CVPR.2006.100
 - [5] BCEWithLogitsLoss — PyTorch 2.7 documentation. (2024). Pytorch.org. https://docs.pytorch.org/docs/stable/generated/torch.nn.BCEWithLogitsLoss.html
-
+- [6] Ruopp, M. D., Perkins, N. J., Whitcomb, B. W., & Schisterman, E. F. (2008). Youden Index and Optimal Cut-Point Estimated from Observations Affected by a Lower Limit of Detection. Biometrical Journal. Biometrische Zeitschrift, 50(3), 419–430. https://doi.org/10.1002/bimj.200710415
