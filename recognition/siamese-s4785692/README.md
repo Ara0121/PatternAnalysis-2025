@@ -123,7 +123,10 @@ Evaluation on the trained model were conducted using testing set. Several metric
 ### 6.1 Training
 The loss curve belows shows the total loss during training. We can observe that while the training loss continuously decreases, the validation loss increases and eventually stablises around 3.25 after 30-40 epochs.Contrastive loss and BCE loss were also plotted. While contrastive loss decreases as the training progress, the loss stablises around 0.18. BCE loss plot is significantly similar to total loss plot, indicating less contribution of contrastive loss.
 
-![Total loss](assets/total_loss_plot.png)
+<p align="center">
+  <img src="assets/total_loss_plot.png" alt="Total loss" width="400"/>
+</p>
+
 | Contrastive loss | BCE loss |
 |:----------------:|:--------:|
 | <img src="assets/contrastive_loss_plot.png" width="400"/> | <img src="assets/bce_loss_plot.png" width="400"/> |
@@ -135,6 +138,22 @@ The following shows the t-SNE visualisations of learned embedding space at epoch
 | <img src="assets/latent_space_epoch_10.png" width="400"/> | <img src="assets/latent_space_epoch_50.png" width="400"/> |
 
 ### 6.2 Testing
+The model was evaluated on the testing set and results in the following performance. The model showed overall 0.8358 accuracy which satisfies the object of this project. While the Precision is significantly low, its Recall maintains a reasonable accuracy which is crucial for medical image classification.
+
+| **Metric**   | **Threshold=0.5** |
+|--------------|-------------------|
+| **Precision** | 0.0750           |
+| **Recall**    | 0.8636           |
+| **F1 score**  | 0.1381           |
+| **Accuracy**  | 0.8358           |
+| **ROC AUC**   | 0.8875           |
+| **PR AUC**    | 0.1304           |
+
+
+| ROC curve | PR curve |
+|:----------------:|:--------:|
+| <img src="assets/roc_curve.png" width="400"/> | <img src="assets/pr_curve.png" width="400"/> |
+
 | Confusion matrix with threshold=0.5 | Confusion matrix with threshold=0.496 |
 |:----------------:|:--------:|
 | <img src="assets/confusion_matrix_thr_0.50.png" width="400"/> | <img src="assets/confusion_matrix_thr_best_0.496.png" width="400"/> |
