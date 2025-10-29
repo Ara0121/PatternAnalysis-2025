@@ -8,9 +8,10 @@
 2. [Dependences](#2-dependences)
 3. [Project Structure](#3-project-structure)
 4. [Model and Data](#4-model-and-data)
-5. [Implementation](#implementation)
-4. [Results](#retults)
-5. [Reference](#reference)
+5. [Implementation](#5-implementation)
+6. [Results](#6-retults)
+7. [Future Work](#7-future-work)
+8. [Reference](#r8-eference)
 
 ## 1. Overview
 The objective of this project is to classify medical images of skin lesions into benign or malignant ([ISIC 2020 Kaggle Challenge](https://www.kaggle.com/c/siim-isic-melanoma-classification/overview)), using a Siamese Network-based classifier [1]. The classifier was trained on [ISIC 2020 JPG 224x224 RESIZED](https://www.kaggle.com/datasets/nischaydnk/isic-2020-jpg-224x224-resized/data) which is resized version of original dataset and aims to achieve 80% accuracy or above on test dataset.
@@ -140,7 +141,7 @@ The following shows the t-SNE visualisations of learned embedding space at epoch
 ### 6.2 Testing
 The model was evaluated on the testing set and results in the following performance. The model showed overall 0.8358 accuracy which satisfies the object of this project. While the Precision is significantly low, its Recall maintains a reasonable accuracy which is crucial for medical image classification.
 
-| **Metric**   | **Threshold=0.5** |
+| **Metric**   | **Value** |
 |--------------|-------------------|
 | **Precision** | 0.0750           |
 | **Recall**    | 0.8636           |
@@ -149,7 +150,7 @@ The model was evaluated on the testing set and results in the following performa
 | **ROC AUC**   | 0.8875           |
 | **PR AUC**    | 0.1304           |
 
-
+The ROC curve shows a moderate trade-off between true positive and false positive rate. Using Youden's J statistic, the optimised threshold was estimated to be 0.496. Confusion matrices show the performance of model with threhold of 0.5 and 0.496. While the optimised threhold implied less true negative (predicted Benign but malignant truly) compared to threhold=0.5. However, it also increased the rate of false positive, which is a clear trade-off. Overall, while the model showed a moderately accuracy and recall, it can be further improved especially its precision. 
 | ROC curve | PR curve |
 |:----------------:|:--------:|
 | <img src="assets/roc_curve.png" width="400"/> | <img src="assets/pr_curve.png" width="400"/> |
@@ -158,7 +159,12 @@ The model was evaluated on the testing set and results in the following performa
 |:----------------:|:--------:|
 | <img src="assets/confusion_matrix_thr_0.50.png" width="400"/> | <img src="assets/confusion_matrix_thr_best_0.496.png" width="400"/> |
 
-## 7. Reference
+## 7. Future works/improvements
+1. Class imbalance significantly affected the accuracy of classification. In this project, ```pos_weight``` was used to address this problem, but furthermore, techniques such as upsampling using generative models, combining with other datasets, can significantly improve the performance.
+2. While ```vit_b_16``` showed its usefulness as embedding network, the comparative research with other models such as ResNet can further investigate the effectiveness of Transformer-based embedding model in classification problems.
+3. Sequential training should be further investigated. In this project, the training involved both classification and embedding components of architecture, but training these two components separately may produce better results overall.
+
+## 8. Reference
 - [1] G. Koch, R. Zemel, R. Salakhutdinov et al., “Siamese neural networks for one-shot image recognition,” inICML deep learning workshop, vol. 2. Lille, 2015, p. 0. https://www.cs.cmu.edu/~rsalakhu/papers/oneshot1.pdf
 - [2] Dosovitskiy, A., Beyer, L., Kolesnikov, A., Weissenborn, D., Zhai, X., Unterthiner, T., Dehghani, M., Minderer, M., Heigold, G., Gelly, S., Uszkoreit, J., & Houlsby, N. (2020). An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale. ArXiv:2010.11929 [Cs]. https://arxiv.org/abs/2010.11929
 - [3] vit_b_16 — Torchvision main documentation. (2024). Pytorch.org. https://docs.pytorch.org/vision/main/models/generated/torchvision.models.vit_b_16.html
