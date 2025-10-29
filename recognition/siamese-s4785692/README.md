@@ -120,10 +120,24 @@ Evaluation on the trained model were conducted using testing set. Several metric
  
 
 ## 6. Results
+### 6.1 Training
+The loss curve belows shows the total loss during training. We can observe that while the training loss continuously decreases, the validation loss increases and eventually stablises around 3.25 after 30-40 epochs.Contrastive loss and BCE loss were also plotted. While contrastive loss decreases as the training progress, the loss stablises around 0.18. BCE loss plot is significantly similar to total loss plot, indicating less contribution of contrastive loss.
+
 ![Total loss](assets/total_loss_plot.png)
-| Contrastive loss |  BCE loss  |
-|:-------------:|:---------:|
-|![Contrastive loss](assets/contrastive_loss_plot.png)|![BCE loss](assets/bce_loss_plot.png)|
+| Contrastive loss | BCE loss |
+|:----------------:|:--------:|
+| <img src="assets/contrastive_loss_plot.png" width="400"/> | <img src="assets/bce_loss_plot.png" width="400"/> |
+
+The following shows the t-SNE visualisations of learned embedding space at epoch 10 and 50. Class 0 (red) represents benign and class 1 (blue) represents malignant. At epoch 10, malignant samples are distributed more widely across the embedding space, indicating limited separation between classes. By epoch 50, malignant samples shift toward the left, with fewer outliers remaining on the right, suggesting that the model progressively learned to separate the two classes more effectively
+
+| t-SNE at epoch 10 | t-SNE at epoch 50 |
+|:----------------:|:--------:|
+| <img src="assets/latent_space_epoch_10.png" width="400"/> | <img src="assets/latent_space_epoch_50.png" width="400"/> |
+
+### 6.2 Testing
+| Confusion matrix with threshold=0.5 | Confusion matrix with threshold=0.496 |
+|:----------------:|:--------:|
+| <img src="assets/confusion_matrix_thr_0.50.png" width="400"/> | <img src="assets/confusion_matrix_thr_best_0.496.png" width="400"/> |
 
 ## 7. Reference
 - [1] G. Koch, R. Zemel, R. Salakhutdinov et al., “Siamese neural networks for one-shot image recognition,” inICML deep learning workshop, vol. 2. Lille, 2015, p. 0. https://www.cs.cmu.edu/~rsalakhu/papers/oneshot1.pdf
